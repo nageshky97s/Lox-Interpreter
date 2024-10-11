@@ -1,13 +1,17 @@
+mod modules;
+use crate::modules::core;
 use std::env;
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
-    if args.len() > 1 {
-        println!("Usage: lox [script]");
+    if args.len() > 2 {
+        println!("Usage: lox [FilePath]");
         std::process::exit(1);
-    } else if args.len() == 1 {
-        println!("File");
+    } else if args.len() == 2 {
+        core::run_file(&args[1]);
     } else {
-        println!("Running");
+        
+        core::run_prompt();
     }
+    
 }
