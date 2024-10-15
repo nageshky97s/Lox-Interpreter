@@ -1,2 +1,3 @@
-pub mod core;
-pub mod error;
+pub mod lox;
+pub mod lexer;
+pub mod token;
