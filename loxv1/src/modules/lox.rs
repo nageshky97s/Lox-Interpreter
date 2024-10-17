@@ -2,7 +2,7 @@ use std::io::{self,Write,Read};
 use std::path::Path;
 use std::fs::File;
 use crate::modules::lexer;
-
+use crate::modules::token;
 
 pub struct Lox{
    pub had_error:bool,
@@ -55,8 +55,21 @@ impl Lox {
     fn run(&mut self,line:String){
     
         let mut scanner=lexer::Scanner::new(line); 
-        scanner.scan_tokens(self);       
-        println!("{}",scanner.tokens.len());    
+        scanner.scan_tokens(self);   
+        
+        for i in scanner.tokens.iter(){
+
+            match  &i.literal{
+                Some(token::Literals::NumLit{numval})=> { 
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,numval)
+                },
+                Some(token::Literals::StringLit{stringval})=> { 
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,stringval)
+                },
+                None=> println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NONE"),
+            }
+           
+        }     
     
     }
    

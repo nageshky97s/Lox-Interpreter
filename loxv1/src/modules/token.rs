@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::fmt;
 #[derive(Debug, Clone, Copy)]
 pub enum TokenType {
     // Single-character tokens.
@@ -16,20 +16,68 @@ pub enum TokenType {
     Print, Return, Super, This, True, Var, While,
     Eof
     }
+    impl fmt::Display for TokenType {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+           match self {
+            TokenType::LeftParen => write!(f,"("),
+            TokenType::RightParen => write!(f,")"),
+            TokenType::LeftBrace => write!(f,"{{"),
+            TokenType::RightBrace => write!(f,"}}"),
+            TokenType::Comma => write!(f,","),
+            TokenType::Dot => write!(f,"."),
+            TokenType::Minus => write!(f,"-"),
+            TokenType::Plus => write!(f,"+"),
+            TokenType::Semicolon => write!(f,";"),
+            TokenType::Slash => write!(f,"/"),
+            TokenType::Star => write!(f,"*"),
+            TokenType::Bang => write!(f,"!"),
+            TokenType::BangEqual => write!(f,"!="),
+            TokenType::Equal => write!(f,"="),
 
+            TokenType::EqualEqual => write!(f,"=="),
+            TokenType::Greater => write!(f,">"),
+            TokenType::GreaterEqual => write!(f,">="),
+            TokenType::Less => write!(f,"<"),
+            TokenType::LessEqual => write!(f,"<="),
+            TokenType::Identifier => write!(f,"IDENTIFIER"),
+            TokenType::String => write!(f,"STRING"),
+            TokenType::Number => write!(f,"NUMBER"),
+            TokenType::And => write!(f,"AND"),
+            TokenType::Class => write!(f,"CLASS"),
+            TokenType::Else => write!(f,"ELSE"),
+            TokenType::False => write!(f,"FALSE"),
+            TokenType::Fun => write!(f,"FUN"),
+            TokenType::For => write!(f,"FOR"),
+
+            TokenType::If => write!(f,"IF"),
+            TokenType::Nil => write!(f,"NIL"),
+            TokenType::Or => write!(f,"OR"),
+            TokenType::Print => write!(f,"PRINT"),
+            TokenType::Return => write!(f,"RETURN"),
+            TokenType::Super => write!(f,"SUPER"),
+            TokenType::This => write!(f,"THIS"),
+            TokenType::True => write!(f,"TRUE"),
+            TokenType::Var => write!(f,"VAR"),
+            TokenType::While => write!(f,"WHILE"),
+            TokenType::Eof => write!(f,"EOF"),
+
+           }
+        }
+    }
+
+pub enum Literals{
+    NumLit{numval:f64},
+    StringLit{stringval:String},
+    
+}
+
+  
    pub struct Token{
     pub  token_type:TokenType,
     pub  lexeme:String,
-    pub  literal:Option<Box<dyn Any>>,
+    pub  literal:Option<Literals>,
     pub   line:usize,
         
     }
 
-    impl Token {
-        pub fn new(token_type_:TokenType,lexeme_:String,literal_:Option<Box<dyn Any>>,line_:usize)->Token{
-            Token { token_type: token_type_, lexeme: lexeme_, literal: literal_, line: line_ }
-        }
-        // pub fn to_string(self) ->String{
-        //     //self.ty
-        // }
-    }
+   

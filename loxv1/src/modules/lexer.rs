@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use crate::modules::token;
 use crate::modules::lox;
-use std::any::Any;
+
+
+
 
 
 pub struct Scanner{
@@ -90,9 +92,16 @@ impl Scanner {
             '\n'=> self.line+=1,
             '"' => self.string_token(loxobj),
              _ => {
-                
-                loxobj.error(self.line,"Unexpected character".to_string())
-            
+
+                if c.is_numeric(){
+                    self.number_token();
+                }
+                else if c.is_alphanumeric() || c=='_' {
+                    self.identifier();
+                }
+                else{
+                    loxobj.error(self.line,"Unexpected character".to_string())
+                    }     
             
             }
         }
@@ -104,10 +113,10 @@ impl Scanner {
     fn add_token(&mut self,token_type:token::TokenType,){
         self.add_token_(token_type,None)
     }
-    fn add_token_(&mut self,token_type_:token::TokenType,literal_ :Option<Box<dyn Any>>){
+    fn add_token_(&mut self,token_type_:token::TokenType,literal_ :Option<token::Literals>){
 
         self.tokens.push(token::Token{token_type:token_type_,
-            lexeme:self.source.chars().skip(self.start).take(self.current-self.start+1).collect::<String>(),
+            lexeme:self.source.chars().skip(self.start).take(self.current-self.start).collect::<String>(),
             literal:literal_,
             line:self.line});
     }
@@ -134,19 +143,44 @@ impl Scanner {
             loxobj.error(self.line,"Unterminated string.".to_string())
         }
         self.advance();
-        
+
         self.add_token_(token::TokenType::String,
-            Some(Box::new(self.source.chars().skip(self.start+1).take(self.current-self.start-1).collect::<String>())));
+            Some(token::Literals::StringLit{stringval:self.source.chars().skip(self.start+1).take(self.current-self.start-2).collect::<String>()}));
+        
     }
 
-    fn number_token(){
+    fn number_token(&mut self){
+        while self.peek().is_numeric() { self.advance();            
+        }
+        if self.peek()=='.'&& self.peek_next().is_numeric(){
+            self.advance();
+            while self.peek().is_numeric() {
+                self.advance();
+            }
+        }
+       
         
+        self.add_token_(token::TokenType::Number,
+            Some(token::Literals::NumLit{numval:(self.source.chars().skip(self.start).take(self.current-self.start).collect::<String>()).parse::<f64>().unwrap()}));
+         
     }
-    fn peek_next(){
-        
+    fn peek_next(&mut self)->char {
+        if self.current+1>=self.source.len()
+        { return '\0';}
+        self.source.chars().nth(self.current+1).unwrap()
+
     }
-    fn identifier(){
+    fn identifier(&mut self){
+        while self.peek().is_alphanumeric() {
+            self.advance();
+        }
+        let text=self.source.chars().skip(self.start).take(self.current-self.start).collect::<String>();
         
+        let tokentype=self.keywords.get(&text);
+        match tokentype {
+            Some(x) =>self.add_token(*x),
+            _ =>self.add_token(token::TokenType::Identifier)
+        }
     }
 }
 
