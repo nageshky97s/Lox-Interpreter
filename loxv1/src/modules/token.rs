@@ -1,5 +1,5 @@
 use std::fmt;
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,
@@ -8,7 +8,7 @@ pub enum TokenType {
     Bang, BangEqual,
     Equal, EqualEqual,
     Greater, GreaterEqual,
-    Less, LessEqual,
+    Lesser, LesserEqual,
     // Literals.
     Identifier, String, Number,
     // Keywords.
@@ -37,8 +37,8 @@ pub enum TokenType {
             TokenType::EqualEqual => write!(f,"=="),
             TokenType::Greater => write!(f,">"),
             TokenType::GreaterEqual => write!(f,">="),
-            TokenType::Less => write!(f,"<"),
-            TokenType::LessEqual => write!(f,"<="),
+            TokenType::Lesser => write!(f,"<"),
+            TokenType::LesserEqual => write!(f,"<="),
             TokenType::Identifier => write!(f,"IDENTIFIER"),
             TokenType::String => write!(f,"STRING"),
             TokenType::Number => write!(f,"NUMBER"),
@@ -65,13 +65,23 @@ pub enum TokenType {
         }
     }
 
+#[derive(Debug,Clone)]
 pub enum Literals{
     NumLit{numval:f64},
     StringLit{stringval:String},
-    
+    Nil,    
+}
+impl fmt::Display for Literals {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+       match self {
+        Self::NumLit { numval }=>write!(f,"{}",numval),
+        Self::StringLit { stringval }=>write!(f,"{}",stringval),
+        Self::Nil =>write!(f,"NULL or NIL TYPE"),
+       }
+    }
 }
 
-  
+#[derive(Debug,Clone)]
    pub struct Token{
     pub  token_type:TokenType,
     pub  lexeme:String,

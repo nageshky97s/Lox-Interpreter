@@ -2,10 +2,6 @@ use std::collections::HashMap;
 use crate::modules::token;
 use crate::modules::lox;
 
-
-
-
-
 pub struct Scanner{
         keywords:HashMap<String, token::TokenType>,
         source:String,
@@ -75,7 +71,7 @@ impl Scanner {
             '*' => self.add_token(token::TokenType::Star),
             '!' => { if self.match_ahead('='){self.add_token(token::TokenType::BangEqual)}else{self.add_token(token::TokenType::Bang)}},
             '=' =>{ if self.match_ahead('='){self.add_token(token::TokenType::EqualEqual)}else{self.add_token(token::TokenType::Equal)}},
-            '<' => { if self.match_ahead('='){self.add_token(token::TokenType::LessEqual)}else{self.add_token(token::TokenType::Less)}},
+            '<' => { if self.match_ahead('='){self.add_token(token::TokenType::LesserEqual)}else{self.add_token(token::TokenType::Lesser)}},
             '>' => { if self.match_ahead('='){self.add_token(token::TokenType::GreaterEqual)}else{self.add_token(token::TokenType::Greater)}},
             '/' => {
                      if self.match_ahead('/'){
@@ -178,7 +174,16 @@ impl Scanner {
         
         let tokentype=self.keywords.get(&text);
         match tokentype {
-            Some(x) =>self.add_token(*x),
+                Some(x) =>{
+                    if let token::TokenType::Nil=x{
+                        self.add_token_(token::TokenType::Nil, Some(token::Literals::Nil));
+                    }
+                    else{
+                        self.add_token(*x);
+                    }
+                    
+                   }
+               ,
             _ =>self.add_token(token::TokenType::Identifier)
         }
     }

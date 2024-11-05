@@ -3,6 +3,8 @@ use std::path::Path;
 use std::fs::File;
 use crate::modules::lexer;
 use crate::modules::token;
+use crate::modules::expr;
+use crate::modules::astprinter;
 
 pub struct Lox{
    pub had_error:bool,
@@ -59,6 +61,7 @@ impl Lox {
         
         for i in scanner.tokens.iter(){
 
+            
             match  &i.literal{
                 Some(token::Literals::NumLit{numval})=> { 
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,numval)
@@ -66,10 +69,19 @@ impl Lox {
                 Some(token::Literals::StringLit{stringval})=> { 
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,stringval)
                 },
+                Some(token::Literals::Nil)=>{
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NULL or NIL TYPE")
+                },
                 None=> println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NONE"),
             }
            
-        }     
+        }    
+        let expression=expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::NumLit{numval:45.67} }));
+        
+    
+        let mut debug_printer = astprinter::AstPrinter{};
+         debug_printer.print(expression);
+    
     
     }
    
@@ -80,6 +92,18 @@ fn report (&mut self, line: usize,message:String){
     eprintln!("[line {}] Error : {}",line,message);
     self.had_error=true;
     
+}
+
+pub fn errorp(&mut self,tok:token::Token,message:String){
+
+    if tok.token_type == token::TokenType::Eof{
+         
+        self.report(tok.line," at end ".to_string() +&message);
+    }
+    else{
+        self.report(tok.line," at '".to_string()+&tok.lexeme+&"'".to_string()+&message);
+    }
+
 }
 
   
