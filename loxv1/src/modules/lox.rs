@@ -3,8 +3,9 @@ use std::path::Path;
 use std::fs::File;
 use crate::modules::lexer;
 use crate::modules::token;
-use crate::modules::expr;
 use crate::modules::astprinter;
+
+use super::parser;
 
 pub struct Lox{
    pub had_error:bool,
@@ -76,11 +77,19 @@ impl Lox {
             }
            
         }    
-        let expression=expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::NumLit{numval:45.67} }));
-        
-    
+        //let expression=expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::NumLit{numval:45.67} }));
+        let mut parser=parser::Parser::new(scanner.tokens);
+        let expression=parser.parse(self);
+
+        if self.had_error{
+            return;
+        }
         let mut debug_printer = astprinter::AstPrinter{};
-         debug_printer.print(expression);
+        match expression {
+            Ok(x)=>{debug_printer.print(x);}
+            _=>{println!("Error has occured");}
+        }
+         
     
     
     }

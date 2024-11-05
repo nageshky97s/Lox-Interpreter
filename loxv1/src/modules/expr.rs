@@ -1,7 +1,7 @@
 use crate::modules::token;
 #[derive(Debug)]
 pub enum Expr {
-    Empty,
+    //Empty,
     Binary(Box<Binary>),
     Grouping(Box<Grouping>),
     Literal(Box<Literal>),
@@ -41,9 +41,9 @@ pub trait Accept<R> {
 impl<R> Accept<R> for Expr {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
         match self {
-            Expr::Empty => {
-                panic!("Cannot visit empty");
-            }
+            // Expr::Empty => {
+            //     panic!("Cannot visit empty");
+            // }
             Expr::Binary(x) => visitor.visit_binary(x),
             Expr::Grouping(x) => visitor.visit_grouping(x),
             Expr::Literal(x) => visitor.visit_literal(x),

@@ -2,21 +2,16 @@ use crate::modules::expr;
 use crate::modules::token;
 use crate::modules::lox;
 use std::panic::AssertUnwindSafe;
-
+use std::any::Any;
 pub struct Parser{
     tokens: Vec<token::Token>,
     current:i32,
 }
 
 pub struct ParseError;
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ParseResult<T>{
-    Ok(T),
-    ParseAbort,
-}
 
 impl Parser {
-    fn new(t:Vec<token::Token>)->Self{
+   pub fn new(t:Vec<token::Token>)->Self{
         Parser{tokens:t,current:0,}
     }
     fn expression(&mut self,lox_obj:&mut lox::Lox) ->expr::Expr{
@@ -93,14 +88,14 @@ impl Parser {
         
         }
         else if self.match_(vec![token::TokenType::LeftParen]){
-            let mut exp:expr::Expr =self.expression(lox_obj) ;
+            let  exp:expr::Expr =self.expression(lox_obj) ;
             self.consume(token::TokenType::RightParen, "Expect ')' after expression".to_string(),lox_obj);
             return Some(expr::Expr::Grouping(Box::new(expr::Grouping{expression:Box::new(exp)})));      
         
         }
         else{
             let peek =self.peek();
-            self.error(peek, "Expect expression.".to_string(), lox_obj);
+            self.error(peek, " Expect expression.".to_string(), lox_obj);
         }
         
         }
@@ -168,10 +163,10 @@ impl Parser {
 
     }
 
-   pub fn parse(&mut self,lox_obj:&mut lox::Lox){
+   pub fn parse(&mut self,lox_obj:&mut lox::Lox)->Result<expr::Expr,Box <dyn Any + Send>>{
 
         let p = std::panic::catch_unwind(AssertUnwindSafe(|| self.expression(lox_obj)));
-        
+        p
 
     }
 
