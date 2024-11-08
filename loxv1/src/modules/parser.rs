@@ -2,7 +2,6 @@ use crate::modules::expr;
 use crate::modules::token;
 use crate::modules::lox;
 use std::panic::AssertUnwindSafe;
-use std::any::Any;
 pub struct Parser{
     tokens: Vec<token::Token>,
     current:i32,
@@ -163,11 +162,17 @@ impl Parser {
 
     }
 
-   pub fn parse(&mut self,lox_obj:&mut lox::Lox)->Result<expr::Expr,Box <dyn Any + Send>>{
+   pub fn parse(&mut self,lox_obj:&mut lox::Lox)->Option<expr::Expr>{
 
         let p = std::panic::catch_unwind(AssertUnwindSafe(|| self.expression(lox_obj)));
-        p
-
+        match p {
+            Ok(x)=>{return Some(x)}
+            Err(payload)if payload.is::<ParseError>()=>{
+                println!("Parsing Error");
+                return None
+            },
+            Err(payload) => std::panic::resume_unwind(payload),
+        }
     }
 
   

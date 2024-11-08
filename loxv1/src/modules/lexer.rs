@@ -177,6 +177,11 @@ impl Scanner {
                 Some(x) =>{
                     if let token::TokenType::Nil=x{
                         self.add_token_(token::TokenType::Nil, Some(token::Literals::Nil));
+                    }else if let token::TokenType::True=x{
+                        self.add_token_(token::TokenType::True, Some(token::Literals::BooleanLit { boolval: true }));
+                    }
+                    else if let token::TokenType::False=x{
+                        self.add_token_(token::TokenType::False, Some(token::Literals::BooleanLit { boolval: false }));
                     }
                     else{
                         self.add_token(*x);

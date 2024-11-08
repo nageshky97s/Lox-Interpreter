@@ -1,5 +1,4 @@
 use crate::modules::expr;
-
 use super::{expr::Accept, token};
 pub struct AstPrinter{
     
@@ -7,7 +6,7 @@ pub struct AstPrinter{
 
 impl AstPrinter{
     
-    pub fn print(&mut self,e:expr::Expr){
+    pub fn print(&mut self,e:&expr::Expr){
        println!("{}",e.accept(self));
     }
   
@@ -47,6 +46,9 @@ impl expr::AstVisitor<String> for AstPrinter{
             },
             token::Literals::StringLit{stringval}=>{
                 return stringval.to_string();
+            }
+            token::Literals::BooleanLit{boolval}=>{
+                return boolval.to_string();
             }
             
         }

@@ -69,13 +69,16 @@ pub enum TokenType {
 pub enum Literals{
     NumLit{numval:f64},
     StringLit{stringval:String},
-    Nil,    
+    BooleanLit{boolval:bool},
+    Nil, 
+   
 }
 impl fmt::Display for Literals {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
        match self {
         Self::NumLit { numval }=>write!(f,"{}",numval),
         Self::StringLit { stringval }=>write!(f,"{}",stringval),
+        Self::BooleanLit { boolval }=>write!(f,"{}",boolval),
         Self::Nil =>write!(f,"NULL or NIL TYPE"),
        }
     }
