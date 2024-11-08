@@ -85,6 +85,7 @@ pub fn interpret(&mut self,exp:expr::Expr,lox_obj:&mut lox::Lox){
             println!("{}",self.stringify(x));
         } 
         Err(payload)if payload.is::<RuntimeError>()=>{
+            println!("Runtime Error");
             lox_obj.runtimeerror(*payload.downcast().expect("The value must be of type RuntimeError"));
         },
         Err(payload) => std::panic::resume_unwind(payload),
