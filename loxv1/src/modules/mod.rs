@@ -5,3 +5,4 @@ pub mod expr;
 pub mod astprinter;
 pub mod parser;
 pub mod interpreter;
+pub mod stmt;

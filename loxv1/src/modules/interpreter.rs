@@ -1,4 +1,4 @@
-use super::{expr::Accept, token,lox,expr};
+use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept};
 use std::panic::AssertUnwindSafe;
 
 pub struct RuntimeError{
@@ -78,11 +78,29 @@ fn check_number_operands_(&mut self,tok:token::Token,left:token::Literals,right:
     }
 }
 
-pub fn interpret(&mut self,exp:expr::Expr,lox_obj:&mut lox::Lox){
-    let res = std::panic::catch_unwind(AssertUnwindSafe(|| self.evaluate(&exp)));
+// pub fn interpret(&mut self,exp:expr::Expr,lox_obj:&mut lox::Lox){
+//     let res = std::panic::catch_unwind(AssertUnwindSafe(|| self.evaluate(&exp)));
+//     match res {
+//         Ok(x)=>{
+//             println!("{}",self.stringify(x));
+//         } 
+//         Err(payload)if payload.is::<RuntimeError>()=>{
+//             println!("Runtime Error");
+//             lox_obj.runtimeerror(*payload.downcast().expect("The value must be of type RuntimeError"));
+//         },
+//         Err(payload) => std::panic::resume_unwind(payload),
+        
+//     }
+// }
+pub fn interpret_new(&mut self, statements:Vec< stmt::Stmt>,lox_obj:&mut lox::Lox){
+    let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        for statement in statements.iter(){
+            self.execute(&statement);
+        }
+    }));
     match res {
-        Ok(x)=>{
-            println!("{}",self.stringify(x));
+        Ok(_x)=>{
+            return
         } 
         Err(payload)if payload.is::<RuntimeError>()=>{
             println!("Runtime Error");
@@ -92,6 +110,10 @@ pub fn interpret(&mut self,exp:expr::Expr,lox_obj:&mut lox::Lox){
         
     }
 }
+fn execute(&mut self,stm:&stmt::Stmt){
+    return stm.accept(self);
+}
+
 fn stringify(&mut self,value:token::Literals)->String{
     match value {
         token::Literals::BooleanLit { boolval }=>{return boolval.to_string() ;}
@@ -102,6 +124,19 @@ fn stringify(&mut self,value:token::Literals)->String{
 }
 
 }
+
+impl stmt::StmtVisitor<()> for Interpreter{
+
+    fn visit_expression_stmt(&mut self, stm: &stmt::Expression) -> () {
+        self.evaluate(&stm.expression);
+    }
+    fn visit_print_stmt(&mut self, stm: &stmt::Print) -> () {
+        let value=self.evaluate(&stm.expression);
+        println!("{}",self.stringify(value));
+    }
+
+}
+
 
 impl expr::AstVisitor<token::Literals> for Interpreter{
     fn visit_literal(&mut self, visitor: &expr::Literal) -> token::Literals{
@@ -261,8 +296,6 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
    
     
 }            
-
-
 
 
 

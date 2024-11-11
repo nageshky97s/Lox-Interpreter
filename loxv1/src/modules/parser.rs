@@ -1,6 +1,7 @@
 use crate::modules::expr;
 use crate::modules::token;
 use crate::modules::lox;
+use crate::modules::stmt;
 use std::panic::AssertUnwindSafe;
 pub struct Parser{
     tokens: Vec<token::Token>,
@@ -162,19 +163,50 @@ impl Parser {
 
     }
 
-   pub fn parse(&mut self,lox_obj:&mut lox::Lox)->Option<expr::Expr>{
+//    pub fn parse(&mut self,lox_obj:&mut lox::Lox)->Option<expr::Expr>{
 
-        let p = std::panic::catch_unwind(AssertUnwindSafe(|| self.expression(lox_obj)));
-        match p {
-            Ok(x)=>{return Some(x)}
-            Err(payload)if payload.is::<ParseError>()=>{
-                println!("Parsing Error");
-                return None
-            },
-            Err(payload) => std::panic::resume_unwind(payload),
-        }
+//         let p = std::panic::catch_unwind(AssertUnwindSafe(|| self.expression(lox_obj)));
+//         match p {
+//             Ok(x)=>{return Some(x)}
+//             Err(payload)if payload.is::<ParseError>()=>{
+//                 println!("Parsing Error");
+//                 return None
+//             },
+//             Err(payload) => std::panic::resume_unwind(payload),
+//         }
+//     }
+
+  pub fn parse_new(&mut self,lox_obj:&mut lox::Lox)->Vec<stmt::Stmt>{
+    let mut statements:Vec<stmt::Stmt>= Vec::new();
+
+    while !self.is_at_end() {
+        statements.push(self.statement(lox_obj));
     }
 
-  
+    return statements
+  }
+  fn statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
+    if self.match_(vec![token::TokenType::Print]){        
+      return self.print_statement(lox_obj);
+    }
+    
+    self.expression_statement(lox_obj)
+}
+fn print_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
+    
+    let value:expr::Expr=self.expression(lox_obj);
+    self.consume(token::TokenType::Semicolon, "Expect ';' after value.".to_string(), lox_obj);
+    stmt::Stmt::Print(stmt::Print{expression:value})
+    
+        
+}
+fn expression_statement(&mut self,lox_obj:&mut lox::Lox,)->stmt::Stmt {
+    let exp:expr::Expr=self.expression(lox_obj);
+    self.consume(token::TokenType::Semicolon, "Expect ';' after value.".to_string(), lox_obj);
+    stmt::Stmt::Expression(stmt::Expression{expression:exp})
+
+
+}
+
 
 }

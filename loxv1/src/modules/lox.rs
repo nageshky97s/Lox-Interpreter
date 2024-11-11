@@ -3,7 +3,7 @@ use std::path::Path;
 use std::fs::File;
 use crate::modules::lexer;
 use crate::modules::token;
-use crate::modules::astprinter;
+// use crate::modules::astprinter;
 use crate::modules::interpreter;
 use super::parser;
 
@@ -84,22 +84,23 @@ impl Lox {
         }    
         //let expression=expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::NumLit{numval:45.67} }));
         let mut parser=parser::Parser::new(scanner.tokens);
-        let expression=parser.parse(self);
+        // let expression=parser.parse(self);
+        let statements=parser.parse_new(self);
         
         if self.had_error{
             return;
         }
         
-        let mut debug_printer = astprinter::AstPrinter{};
-        let e=expression.unwrap();
-        debug_printer.print(&e);
+        // let mut debug_printer = astprinter::AstPrinter{};
+        // let e=expression.unwrap();
+        // debug_printer.print(&e);
        
         if self.had_runtime_error{
             return;
         }
          
         let mut interpreter=interpreter::Interpreter::new();
-        interpreter.interpret(e,self)
+        interpreter.interpret_new(statements,self)
     
     
     }
