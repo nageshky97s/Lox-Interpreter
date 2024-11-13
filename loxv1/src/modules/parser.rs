@@ -87,6 +87,9 @@ impl Parser {
             }
         
         }
+        else if self.match_(vec![token::TokenType::Identifier]){
+            return Some(expr::Expr::Variable(Box::new(expr::Variable { name: self.previous() })))
+        }
         else if self.match_(vec![token::TokenType::LeftParen]){
             let  exp:expr::Expr =self.expression(lox_obj) ;
             self.consume(token::TokenType::RightParen, "Expect ')' after expression".to_string(),lox_obj);
@@ -180,11 +183,42 @@ impl Parser {
     let mut statements:Vec<stmt::Stmt>= Vec::new();
 
     while !self.is_at_end() {
-        statements.push(self.statement(lox_obj));
+        statements.push(self.declaration(lox_obj).unwrap());
     }
 
     return statements
   }
+  fn declaration(&mut self,lox_obj:&mut lox::Lox)->Option<stmt::Stmt>{
+
+    let p = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        if self.match_(vec![token::TokenType::Var]){
+            return self.var_declaration(lox_obj);
+        }
+        return self.statement(lox_obj);
+
+    }));
+        match p {
+            Ok(_)=>{return None }
+            Err(payload)if payload.is::<ParseError>()=>{
+                println!("Parsing Error");
+                self.synchronize();
+                return None
+            },
+            Err(payload) => std::panic::resume_unwind(payload),
+        }
+    
+  }
+  fn var_declaration(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
+    let name:token::Token=self.consume(token::TokenType::Identifier, "Expect variable name.".to_string(), lox_obj);
+    let mut initializer=expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil}));
+    if self.match_(vec![token::TokenType::Equal]){
+        initializer=self.expression(lox_obj);
+    }
+    self.consume(token::TokenType::Semicolon, "Expect ';' after variable declaration.".to_string(), lox_obj);
+    stmt::Stmt::Var(stmt::Var { name: name, initializer: initializer })
+  }
+
+
   fn statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
     if self.match_(vec![token::TokenType::Print]){        
       return self.print_statement(lox_obj);

@@ -65,7 +65,7 @@ pub enum TokenType {
         }
     }
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
 pub enum Literals{
     NumLit{numval:f64},
     StringLit{stringval:String},
@@ -84,7 +84,7 @@ impl fmt::Display for Literals {
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
    pub struct Token{
     pub  token_type:TokenType,
     pub  lexeme:String,

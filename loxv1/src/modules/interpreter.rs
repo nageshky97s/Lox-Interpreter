@@ -1,4 +1,4 @@
-use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept};
+use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment};
 use std::panic::AssertUnwindSafe;
 
 pub struct RuntimeError{
@@ -7,12 +7,12 @@ pub struct RuntimeError{
 }
 
 pub struct Interpreter{
-   
+   environment:environment::Environment
 }
 
 impl Interpreter {
     pub fn new()->Self{
-        Interpreter{}
+        Interpreter{environment:environment::Environment::new()}
     }
     fn evaluate(&mut self,exp:&expr::Expr)->token::Literals{
         return exp.accept(self)
@@ -133,6 +133,14 @@ impl stmt::StmtVisitor<()> for Interpreter{
     fn visit_print_stmt(&mut self, stm: &stmt::Print) -> () {
         let value=self.evaluate(&stm.expression);
         println!("{}",self.stringify(value));
+    }
+
+    fn visit_var_stmt(&mut self, stm: &stmt::Var) -> () {
+        let mut value =token::Literals::Nil;
+        if stm.initializer!=expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil})){
+            value=self.evaluate(&stm.initializer);
+        }
+        self.environment.define(stm.name.lexeme.clone(), value);
     }
 
 }
@@ -293,7 +301,9 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
         }
 
     }
-   
+    fn visit_variable(&mut self, visitor: &expr::Variable) -> token::Literals {
+        self.environment.get(visitor.name.clone())
+    }
     
 }            
 
