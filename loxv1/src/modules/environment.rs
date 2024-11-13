@@ -1,14 +1,20 @@
 use std::collections::HashMap;
 use super::{token,interpreter};
+
+#[derive(Debug,Clone,PartialEq)]
 pub struct Environment{
-    pub values:HashMap<String,token::Literals>
+    pub values:HashMap<String,token::Literals>,
+    pub enclosing:Option<Box<Environment>>,
 }
 
 impl Environment {
     pub fn new()->Self{
-        Environment{values:HashMap::new()}
+        Environment{values:HashMap::new(),enclosing:None}
     }
 
+    pub fn new_oop(e:Environment)->Self{
+        Environment{values:HashMap::new(),enclosing:Some(Box::new(e))}
+    }
     pub fn define(&mut self,name:String,value:token::Literals){
         self.values.insert(name,value);
     }
@@ -17,7 +23,13 @@ impl Environment {
         if self.values.contains_key(&name.lexeme){
             return self.values.get(&name.lexeme).unwrap().clone();
         }
-        std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable".to_string()+&name.lexeme+&" .".to_string()});
+        match &mut self.enclosing {
+            Some(x)=>{
+                return x.get(name);
+            }
+            _=>{}
+        }
+        std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()});
 
     }
     pub fn assign(&mut self,name:token::Token,value:token::Literals){
@@ -25,7 +37,15 @@ impl Environment {
             self.values.insert(name.lexeme,value);
             return;
         }
-        std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable".to_string()+&name.lexeme+&" .".to_string()});
+        match &mut self.enclosing {
+            Some(x)=>{
+                x.assign(name.clone(),value);
+            }
+            _=>{}
+        }
+
+        
+        std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()});
 
     }
     

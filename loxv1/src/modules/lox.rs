@@ -98,7 +98,7 @@ impl Lox {
         if self.had_runtime_error{
             return;
         }
-         
+                
         let mut interpreter=interpreter::Interpreter::new();
         interpreter.interpret_new(statements,self)
     

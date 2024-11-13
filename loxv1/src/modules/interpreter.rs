@@ -7,7 +7,7 @@ pub struct RuntimeError{
 }
 
 pub struct Interpreter{
-   environment:environment::Environment
+   pub environment:environment::Environment
 }
 
 impl Interpreter {
@@ -93,6 +93,7 @@ fn check_number_operands_(&mut self,tok:token::Token,left:token::Literals,right:
 //     }
 // }
 pub fn interpret_new(&mut self, statements:Vec< stmt::Stmt>,lox_obj:&mut lox::Lox){
+    
     let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
         for statement in statements.iter(){
             self.execute(&statement);
@@ -111,6 +112,7 @@ pub fn interpret_new(&mut self, statements:Vec< stmt::Stmt>,lox_obj:&mut lox::Lo
     }
 }
 fn execute(&mut self,stm:&stmt::Stmt){
+    
     return stm.accept(self);
 }
 
@@ -123,6 +125,24 @@ fn stringify(&mut self,value:token::Literals)->String{
     }
 }
 
+fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment: environment::Environment){
+    let previous=self.environment.clone();
+    let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        self.environment=environment;
+        for statement in statements{
+            self.execute(statement);
+        }
+    }));
+    match res {
+        Ok(_x)=>{
+            self.environment=previous;
+        } 
+        Err(payload) => {
+            self.environment=previous;        
+            std::panic::resume_unwind(payload)},
+    }
+}
+
 }
 
 impl stmt::StmtVisitor<()> for Interpreter{
@@ -131,6 +151,7 @@ impl stmt::StmtVisitor<()> for Interpreter{
         self.evaluate(&stm.expression);
     }
     fn visit_print_stmt(&mut self, stm: &stmt::Print) -> () {
+        
         let value=self.evaluate(&stm.expression);
         println!("{}",self.stringify(value));
     }
@@ -141,6 +162,10 @@ impl stmt::StmtVisitor<()> for Interpreter{
             value=self.evaluate(&stm.initializer);
         }
         self.environment.define(stm.name.lexeme.clone(), value);
+    }
+
+    fn visit_block_stmt(&mut self, visitor: &stmt::Block) -> () {
+        self.execute_block(&visitor.statements,environment::Environment::new_oop(self.environment.clone()));
     }
 
 }

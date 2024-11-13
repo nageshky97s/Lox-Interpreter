@@ -209,20 +209,21 @@ impl Parser {
         }
         
     }
-
     return statements
   }
   fn declaration(&mut self,lox_obj:&mut lox::Lox)->Option<stmt::Stmt>{
 
-    let p = std::panic::catch_unwind(AssertUnwindSafe(|| {
+       let p = std::panic::catch_unwind(AssertUnwindSafe(|| {
         if self.match_(vec![token::TokenType::Var]){
             return self.var_declaration(lox_obj);
         }
         return self.statement(lox_obj);
+    
+        
 
     }));
         match p {
-            Ok(_)=>{return None }
+            Ok(x)=>{return Some(x)}
             Err(payload)if payload.is::<ParseError>()=>{
                 println!("Parsing Error");
                 self.synchronize();
@@ -247,9 +248,15 @@ impl Parser {
     if self.match_(vec![token::TokenType::Print]){        
       return self.print_statement(lox_obj);
     }
+    if self.match_(vec![token::TokenType::LeftBrace]){
+        
+        return stmt::Stmt::Block(stmt::Block{statements:self.block(lox_obj)});
+    }
     
     self.expression_statement(lox_obj)
 }
+
+
 fn print_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
     
     let value:expr::Expr=self.expression(lox_obj);
@@ -265,6 +272,16 @@ fn expression_statement(&mut self,lox_obj:&mut lox::Lox,)->stmt::Stmt {
 
 
 }
-
+fn block(&mut self,lox_obj:&mut lox::Lox,)->Vec<stmt::Stmt> {
+    let mut statements:Vec<stmt::Stmt>=Vec::new();
+    while !self.check(token::TokenType::RightBrace) && !self.is_at_end() {
+        match self.declaration(lox_obj) {
+            Some(x)=>{ statements.push(x);}
+            _=>{}
+        }       
+    }
+    self.consume(token::TokenType::RightBrace, "Expect '}' after block.".to_string(), lox_obj);
+    statements
+}
 
 }
