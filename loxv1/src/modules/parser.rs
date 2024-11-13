@@ -3,6 +3,8 @@ use crate::modules::token;
 use crate::modules::lox;
 use crate::modules::stmt;
 use std::panic::AssertUnwindSafe;
+
+
 pub struct Parser{
     tokens: Vec<token::Token>,
     current:i32,
@@ -15,7 +17,21 @@ impl Parser {
         Parser{tokens:t,current:0,}
     }
     fn expression(&mut self,lox_obj:&mut lox::Lox) ->expr::Expr{
-        self.equality(lox_obj)
+        self.assignment(lox_obj)
+        
+    }
+    fn assignment(&mut self, lox_obj:&mut lox::Lox)->expr::Expr{
+        let exp=self.equality(lox_obj);
+        if self.match_(vec![token::TokenType::Equal]){
+            let equals=self.previous();
+            let value=self.assignment(lox_obj);
+            if let expr::Expr::Variable(name)= exp {
+                let name_=(*name).name.clone();
+                return expr::Expr::Assign(Box::new(expr::Assign{name:name_,value:Box::new(value)}))
+            }
+            self.error(equals, "Invalid assignment target.".to_string(), lox_obj)
+        }
+        exp
     }
     fn equality(&mut self,lox_obj:&mut lox::Lox) ->expr::Expr{
         let mut exp:expr::Expr =self.comparison(lox_obj);
@@ -183,7 +199,15 @@ impl Parser {
     let mut statements:Vec<stmt::Stmt>= Vec::new();
 
     while !self.is_at_end() {
-        statements.push(self.declaration(lox_obj).unwrap());
+        match self.declaration(lox_obj) {
+            Some(x)=>{
+                statements.push(x);
+            }
+            None=>{
+
+            }
+        }
+        
     }
 
     return statements

@@ -304,6 +304,12 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
     fn visit_variable(&mut self, visitor: &expr::Variable) -> token::Literals {
         self.environment.get(visitor.name.clone())
     }
+
+    fn visit_assign(&mut self, visitor: &expr::Assign) -> token::Literals {
+        let value = self.evaluate(&visitor.value);
+        self.environment.assign(visitor.name.clone(),value.clone());
+        return value;
+    }
     
 }            
 

@@ -7,8 +7,16 @@ pub enum Expr {
     Literal(Box<Literal>),
     Unary(Box<Unary>),
     Variable(Box<Variable>),
+    Assign(Box<Assign>),
 }
 pub type ExprBox = Box<Expr>;
+
+#[derive(Debug,PartialEq)]
+pub struct Assign{
+    pub name: token::Token,
+    pub value:ExprBox,
+}
+
 
 #[derive(Debug,PartialEq)]
 pub struct Binary {
@@ -29,7 +37,7 @@ pub struct Unary {
     pub operator: token::Token,
     pub right: ExprBox,
 }
-#[derive(Debug,PartialEq)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct Variable{
     pub name:token::Token,
 }
@@ -40,6 +48,7 @@ pub trait AstVisitor<R> {
     fn visit_literal(&mut self, visitor: &Literal) -> R;
     fn visit_unary(&mut self, visitor: &Unary) -> R;
     fn visit_variable(&mut self, visitor: &Variable) -> R;
+    fn visit_assign(&mut self, visitor: &Assign) -> R;
 }
 pub trait Accept<R> {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R;
@@ -55,9 +64,16 @@ impl<R> Accept<R> for Expr {
             Expr::Literal(x) => visitor.visit_literal(x),
             Expr::Unary(x) => visitor.visit_unary(x),
             Expr::Variable(x) => visitor.visit_variable(x),
+            Expr::Assign(x)=>visitor.visit_assign(x),
         }
     }
 }
+impl<R> Accept<R> for Assign {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_assign(self)
+    }
+}
+
 impl<R> Accept<R> for Binary {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_binary(self)
