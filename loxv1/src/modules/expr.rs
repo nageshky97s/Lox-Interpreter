@@ -8,8 +8,18 @@ pub enum Expr {
     Unary(Box<Unary>),
     Variable(Box<Variable>),
     Assign(Box<Assign>),
+    Logical(Box<Logical>)
 }
 pub type ExprBox = Box<Expr>;
+
+#[derive(Debug,PartialEq)]
+pub struct Logical{
+    pub left:ExprBox,
+    pub operator:token::Token,
+    pub right:ExprBox,
+}
+
+
 
 #[derive(Debug,PartialEq)]
 pub struct Assign{
@@ -49,6 +59,7 @@ pub trait AstVisitor<R> {
     fn visit_unary(&mut self, visitor: &Unary) -> R;
     fn visit_variable(&mut self, visitor: &Variable) -> R;
     fn visit_assign(&mut self, visitor: &Assign) -> R;
+    fn visit_logical(&mut self, visitor: &Logical) -> R;
 }
 pub trait Accept<R> {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R;
@@ -65,6 +76,8 @@ impl<R> Accept<R> for Expr {
             Expr::Unary(x) => visitor.visit_unary(x),
             Expr::Variable(x) => visitor.visit_variable(x),
             Expr::Assign(x)=>visitor.visit_assign(x),
+            Expr::Logical(x)=>visitor.visit_logical(x),
+
         }
     }
 }
@@ -87,6 +100,11 @@ impl<R> Accept<R> for Grouping {
 impl<R> Accept<R> for Literal {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_literal(self)
+    }
+}
+impl<R> Accept<R> for Logical {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_logical(self)
     }
 }
 impl<R> Accept<R> for Unary {

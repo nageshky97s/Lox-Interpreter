@@ -5,11 +5,12 @@ use crate::modules::lexer;
 use crate::modules::token;
 // use crate::modules::astprinter;
 use crate::modules::interpreter;
-use super::parser;
+use super::{parser,stmt};
 
 pub struct Lox{
    pub had_error:bool,
    pub had_runtime_error:bool,
+   pub allstatements:Option<Vec<stmt::Stmt>>,
 }
 
 
@@ -22,7 +23,7 @@ where P: AsRef<Path>, {
 impl Lox {
 
     pub  fn new() -> Self {
-        Lox { had_error: false,had_runtime_error:false }
+        Lox { had_error: false,had_runtime_error:false,allstatements:None }
     }
 
     pub fn run_file(&mut self,path:&String) {
@@ -85,6 +86,7 @@ impl Lox {
         //let expression=expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::NumLit{numval:45.67} }));
         let mut parser=parser::Parser::new(scanner.tokens);
         // let expression=parser.parse(self);
+        
         let statements=parser.parse_new(self);
         
         if self.had_error{
@@ -97,10 +99,19 @@ impl Lox {
        
         if self.had_runtime_error{
             return;
-        }
-                
+        }                
+       
         let mut interpreter=interpreter::Interpreter::new();
-        interpreter.interpret_new(statements,self)
+        match &mut self.allstatements {
+            // Some(x)=>{
+            //     x.append(&mut statements);
+            //     }
+            // None=>{
+            //  self.allstatements=Some(statements);
+            // }  
+            _=>{self.allstatements=Some(statements);}          
+        }
+        interpreter.interpret_new(self);
     
     
     }

@@ -92,12 +92,18 @@ fn check_number_operands_(&mut self,tok:token::Token,left:token::Literals,right:
         
 //     }
 // }
-pub fn interpret_new(&mut self, statements:Vec< stmt::Stmt>,lox_obj:&mut lox::Lox){
+pub fn interpret_new(&mut self, lox_obj:&mut lox::Lox){
     
     let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        for statement in statements.iter(){
-            self.execute(&statement);
+        match &mut lox_obj.allstatements {
+            Some(x)=>{
+                for statement in x.iter_mut(){
+                    self.execute(&statement);
+                }
+            }
+            _=>{}
         }
+       
     }));
     match res {
         Ok(_x)=>{
@@ -147,8 +153,27 @@ fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment: environme
 
 impl stmt::StmtVisitor<()> for Interpreter{
 
+    fn visit_while_stmt(&mut self, stm: &stmt::While) -> () {
+        let mut res =self.evaluate(&stm.condition);
+        while self.is_truthy(res) {
+            self.execute(&*stm.body);
+            res=self.evaluate(&stm.condition);
+        }
+    }
     fn visit_expression_stmt(&mut self, stm: &stmt::Expression) -> () {
         self.evaluate(&stm.expression);
+    }
+    fn visit_if_stmt(&mut self, stm: &stmt::If) -> () {
+        let res=self.evaluate(&stm.condition);
+        if self.is_truthy(res){
+            self.execute(&stm.then_branch);
+        }
+        match &*stm.else_branch {
+            Some(x)=>{
+                self.execute(x);
+            },
+            _=>{}
+        }
     }
     fn visit_print_stmt(&mut self, stm: &stmt::Print) -> () {
         
@@ -172,6 +197,21 @@ impl stmt::StmtVisitor<()> for Interpreter{
 
 
 impl expr::AstVisitor<token::Literals> for Interpreter{
+
+    fn visit_logical(&mut self, visitor: &expr::Logical) -> token::Literals {
+        let left=self.evaluate(&visitor.left);
+        if visitor.operator.token_type==token::TokenType::Or{
+            if self.is_truthy(left.clone()) {return left;}
+        }
+        else{
+            if !self.is_truthy(left.clone()){
+                return left;
+            }
+         }
+        
+        return self.evaluate(&visitor.right);
+    }
+
     fn visit_literal(&mut self, visitor: &expr::Literal) -> token::Literals{
         return visitor.value.clone()
     }
@@ -208,8 +248,10 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
     }
     
     fn visit_binary(&mut self, visitor: &expr::Binary) -> token::Literals{
+       
         let right:token::Literals=self.evaluate(&visitor.right);
         let left:token::Literals=self.evaluate(&visitor.left);
+        
         match visitor.operator.token_type {
             token::TokenType::Minus=>{
                 self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
@@ -255,6 +297,7 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                      }                 
              },          
             token::TokenType::Plus=>{
+                
                 if let token::Literals::NumLit { numval:x }=left{
                     if let token::Literals::NumLit { numval:y }=right{
                          return token::Literals::NumLit { numval: x+y };  
@@ -327,12 +370,14 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
 
     }
     fn visit_variable(&mut self, visitor: &expr::Variable) -> token::Literals {
-        self.environment.get(visitor.name.clone())
+        self.environment.getval(&visitor.name)
+        
     }
 
     fn visit_assign(&mut self, visitor: &expr::Assign) -> token::Literals {
+        
         let value = self.evaluate(&visitor.value);
-        self.environment.assign(visitor.name.clone(),value.clone());
+        self.environment.assign(&visitor.name,value.clone());
         return value;
     }
     

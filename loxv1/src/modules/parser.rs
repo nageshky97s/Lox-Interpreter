@@ -21,7 +21,7 @@ impl Parser {
         
     }
     fn assignment(&mut self, lox_obj:&mut lox::Lox)->expr::Expr{
-        let exp=self.equality(lox_obj);
+        let exp=self.or(lox_obj);
         if self.match_(vec![token::TokenType::Equal]){
             let equals=self.previous();
             let value=self.assignment(lox_obj);
@@ -32,6 +32,25 @@ impl Parser {
             self.error(equals, "Invalid assignment target.".to_string(), lox_obj)
         }
         exp
+    }
+    fn or(&mut self, lox_obj:&mut lox::Lox)->expr::Expr{
+        let mut exp=self.and(lox_obj);
+        while self.match_(vec![token::TokenType::Or]) {
+            let operator =self.previous();
+            let right = self.and(lox_obj);
+            exp = expr::Expr::Logical(Box::new(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+        }
+        exp
+    }
+    fn and(&mut self, lox_obj:&mut lox::Lox)->expr::Expr{
+        let mut exp=self.equality(lox_obj);
+        while self.match_(vec![token::TokenType::And]) {
+            let operator =self.previous();
+            let right = self.equality(lox_obj);
+            exp=expr::Expr::Logical(Box::new(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+        }
+        exp
+
     }
     fn equality(&mut self,lox_obj:&mut lox::Lox) ->expr::Expr{
         let mut exp:expr::Expr =self.comparison(lox_obj);
@@ -240,35 +259,103 @@ impl Parser {
         initializer=self.expression(lox_obj);
     }
     self.consume(token::TokenType::Semicolon, "Expect ';' after variable declaration.".to_string(), lox_obj);
-    stmt::Stmt::Var(stmt::Var { name: name, initializer: initializer })
+    stmt::Stmt::Var(Box::new(stmt::Var { name: name, initializer: initializer }))
   }
 
 
   fn statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
+    
+    if self.match_(vec![token::TokenType::For]){
+        return self.for_statement(lox_obj);
+    }
+
+    if self.match_(vec![token::TokenType::If]){
+        return self.if_statement(lox_obj);
+    }
     if self.match_(vec![token::TokenType::Print]){        
       return self.print_statement(lox_obj);
     }
+    if self.match_(vec![token::TokenType::While]){
+        return self.while_statement(lox_obj);
+    }
     if self.match_(vec![token::TokenType::LeftBrace]){
         
-        return stmt::Stmt::Block(stmt::Block{statements:self.block(lox_obj)});
+        return stmt::Stmt::Block(Box::new(stmt::Block{statements:self.block(lox_obj)}));
     }
+    
     
     self.expression_statement(lox_obj)
 }
 
+fn for_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
+    self.consume(token::TokenType::LeftParen, "Expect '(' after 'for'.".to_string(), lox_obj);
+    let  initializer:Option<stmt::Stmt>;
+    if self.match_(vec![token::TokenType::Semicolon]){
+        initializer=None;
+    }else if self.match_(vec![token::TokenType::Var]){
+        initializer=Some(self.var_declaration(lox_obj));
+    }else{
+        initializer=Some(self.expression_statement(lox_obj));
+    }
+    let mut condition:Option<expr::Expr>=None;
+    if !self.check(token::TokenType::Semicolon){
+        condition=Some(self.expression(lox_obj));
+    }
+    self.consume(token::TokenType::Semicolon, "Expect ';' after loop condition.".to_string(), lox_obj);
+    let mut increment:Option<expr::Expr>=None;
+    if !self.check(token::TokenType::RightParen){
+        increment=Some(self.expression(lox_obj));
+    }
+    self.consume(token::TokenType::RightParen, "Expect ')' after for clauses.".to_string(), lox_obj);
+    let mut body=self.statement(lox_obj);
+    if increment!=None{
+        body=stmt::Stmt::Block(Box::new(stmt::Block { statements: vec![body,
+            stmt::Stmt::Expression(Box::new(stmt::Expression { expression: increment.unwrap() }))] }));
+    }
 
+    if condition==None{
+        condition=Some(expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::BooleanLit { boolval: true } })));
+    }
+    body=stmt::Stmt::While(Box::new(stmt::While { condition: condition.unwrap(), body: Box::new(body) }));
+
+    if initializer!=None{
+        body=stmt::Stmt::Block(Box::new(stmt::Block { statements: vec![initializer.unwrap(),body] }));
+    }
+
+    return body;
+}
+
+fn while_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
+    self.consume(token::TokenType::LeftParen, "Expect '(' after 'while'.".to_string(), lox_obj);
+    let condition=self.expression(lox_obj);
+    self.consume(token::TokenType::RightParen, "Expect ')' after condition.".to_string(), lox_obj);
+    let body = self.statement(lox_obj);
+    return stmt::Stmt::While(Box::new(stmt::While { condition: condition, body: Box::new(body) }));
+}
+
+fn if_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
+    self.consume(token::TokenType::LeftParen, "Expect '(' after 'if'.".to_string(), lox_obj);
+    let condition=self.expression(lox_obj);
+    self.consume(token::TokenType::RightParen, "Expect ')' after if condition.".to_string(), lox_obj);
+    let then_branch=self.statement(lox_obj);
+    let mut else_branch:Option<stmt::Stmt>=None;
+    if self.match_(vec![token::TokenType::Else]){
+        else_branch=Some(self.statement(lox_obj));
+    }
+    return stmt::Stmt::If(Box::new(stmt::If { condition: condition, then_branch: Box::new(then_branch), else_branch: Box::new(else_branch) }));
+}
 fn print_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
     
     let value:expr::Expr=self.expression(lox_obj);
     self.consume(token::TokenType::Semicolon, "Expect ';' after value.".to_string(), lox_obj);
-    stmt::Stmt::Print(stmt::Print{expression:value})
+    stmt::Stmt::Print(Box::new(stmt::Print{expression:value}))
     
         
 }
 fn expression_statement(&mut self,lox_obj:&mut lox::Lox,)->stmt::Stmt {
     let exp:expr::Expr=self.expression(lox_obj);
     self.consume(token::TokenType::Semicolon, "Expect ';' after value.".to_string(), lox_obj);
-    stmt::Stmt::Expression(stmt::Expression{expression:exp})
+    stmt::Stmt::Expression(Box::new(stmt::Expression{expression:exp}))
 
 
 }

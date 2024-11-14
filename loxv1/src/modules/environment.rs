@@ -19,29 +19,26 @@ impl Environment {
         self.values.insert(name,value);
     }
 
-    pub fn get(&mut self,name:token::Token)->token::Literals{
+    pub fn getval(&mut self,name:&token::Token)->token::Literals{
+        
         if self.values.contains_key(&name.lexeme){
             return self.values.get(&name.lexeme).unwrap().clone();
         }
-        match &mut self.enclosing {
-            Some(x)=>{
-                return x.get(name);
-            }
-            _=>{}
+        
+        if self.enclosing!=None{
+            return self.enclosing.as_mut().unwrap().getval(name);
         }
         std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()});
 
     }
-    pub fn assign(&mut self,name:token::Token,value:token::Literals){
+    pub fn assign(&mut self,name:&token::Token,value:token::Literals){
+        
         if self.values.contains_key(&name.lexeme){
-            self.values.insert(name.lexeme,value);
+            self.values.insert(name.lexeme.clone(),value);
             return;
         }
-        match &mut self.enclosing {
-            Some(x)=>{
-                x.assign(name.clone(),value);
-            }
-            _=>{}
+        if self.enclosing!=None{
+            return self.enclosing.as_mut().unwrap().assign(name,value);
         }
 
         
