@@ -132,27 +132,29 @@ fn stringify(&mut self,value:token::Literals)->String{
     }
 }
 
-fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment_: environment::Environment){
-    let previous=self.environment.clone();
-    let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        self.environment=environment_;
-        //println!("---{}----{}",self.environment.values.len(),previous.values.len());
+fn execute_block(&mut self,statements:& Vec< stmt::Stmt>){
+    
+    let res = std::panic::catch_unwind(AssertUnwindSafe(|| {                
         for statement in statements{
             self.execute(statement);
         }
-    }));
-    // self.environment=previous.clone();
+    }));   
    
     match res {
         Ok(_x)=>{
-            //self.environment=previous.clone();
+            if self.environment.env_values.len()>1{
+                self.environment.env_values.pop();
+            }
+           
         } 
         Err(payload) => {
-            self.environment=previous.clone();        
+            if self.environment.env_values.len()>1{
+                self.environment.env_values.pop();
+            }
             std::panic::resume_unwind(payload)},
         
     }
-    //println!("---{}----{}",self.environment.values.len(),previous.values.len());
+    
 }
 
 }
@@ -197,7 +199,8 @@ impl stmt::StmtVisitor<()> for Interpreter{
     }
 
     fn visit_block_stmt(&mut self, visitor: &stmt::Block) -> () {
-        self.execute_block(&visitor.statements,environment::Environment::new_oop(self.environment.clone()));
+        self.environment.new_env();
+        self.execute_block(&visitor.statements,);
     }
 
 }
