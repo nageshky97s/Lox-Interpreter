@@ -136,19 +136,23 @@ fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment_: environm
     let previous=self.environment.clone();
     let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
         self.environment=environment_;
+        //println!("---{}----{}",self.environment.values.len(),previous.values.len());
         for statement in statements{
             self.execute(statement);
         }
     }));
+    // self.environment=previous.clone();
+   
     match res {
         Ok(_x)=>{
-            self.environment=previous;
+            //self.environment=previous.clone();
         } 
         Err(payload) => {
-            self.environment=previous;        
+            self.environment=previous.clone();        
             std::panic::resume_unwind(payload)},
         
     }
+    //println!("---{}----{}",self.environment.values.len(),previous.values.len());
 }
 
 }

@@ -33,8 +33,8 @@ impl Environment {
     }
     pub fn assign(&mut self,name:&token::Token,value:token::Literals){
         
-        if self.values.contains_key(&name.lexeme){
-            self.values.insert(name.lexeme.clone(),value);
+        if self.values.contains_key(&name.lexeme){            
+            self.values.insert(name.lexeme.clone(),value);            
             return;
         }
         if self.enclosing!=None{
