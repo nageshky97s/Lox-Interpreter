@@ -108,9 +108,9 @@ impl Parser {
     fn primary(&mut self,lox_obj:&mut lox::Lox) ->Option<expr::Expr>{
         
         if self.match_(vec![token::TokenType::False]){
-        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::StringLit{stringval:"false".to_string()}}))); }
+        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::BooleanLit { boolval: false }}))); }
         else if self.match_(vec![token::TokenType::True]){
-        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::StringLit{stringval:"true".to_string()}}))); }
+        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::BooleanLit { boolval: true }}))); }
         else if self.match_(vec![token::TokenType::Nil]){
         return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil}))); }
         else if self.match_(vec![token::TokenType::Number,token::TokenType::String]){

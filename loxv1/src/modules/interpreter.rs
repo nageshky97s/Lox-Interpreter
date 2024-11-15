@@ -24,6 +24,7 @@ impl Interpreter {
             }
             token::Literals::BooleanLit { boolval }=>{return boolval}
             _=>{
+                
                 return true;
             }
         }
@@ -131,10 +132,10 @@ fn stringify(&mut self,value:token::Literals)->String{
     }
 }
 
-fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment: environment::Environment){
+fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment_: environment::Environment){
     let previous=self.environment.clone();
     let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        self.environment=environment;
+        self.environment=environment_;
         for statement in statements{
             self.execute(statement);
         }
@@ -146,6 +147,7 @@ fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment: environme
         Err(payload) => {
             self.environment=previous;        
             std::panic::resume_unwind(payload)},
+        
     }
 }
 
@@ -154,7 +156,8 @@ fn execute_block(&mut self,statements:& Vec< stmt::Stmt>, environment: environme
 impl stmt::StmtVisitor<()> for Interpreter{
 
     fn visit_while_stmt(&mut self, stm: &stmt::While) -> () {
-        let mut res =self.evaluate(&stm.condition);
+        let mut res =self.evaluate(&stm.condition);       
+        
         while self.is_truthy(res) {
             self.execute(&*stm.body);
             res=self.evaluate(&stm.condition);
