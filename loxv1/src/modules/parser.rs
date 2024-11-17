@@ -5,6 +5,7 @@ use crate::modules::stmt;
 use std::panic::AssertUnwindSafe;
 
 
+
 pub struct Parser{
     tokens: Vec<token::Token>,
     current:i32,
@@ -102,7 +103,41 @@ impl Parser {
             let right:expr::Expr=self.unary(lox_obj);
             return expr::Expr::Unary(Box::new(expr::Unary{operator:operator,right:Box::new(right)}));
         }
-        return self.primary(lox_obj).unwrap()
+
+        return self.call(lox_obj);
+    }
+    fn call(&mut self,lox_obj:&mut lox::Lox)->expr::Expr{
+
+        let mut exp=self.primary(lox_obj).unwrap();
+        loop {
+            if self.match_(vec![token::TokenType::LeftParen]){
+                exp=self.finish_call(exp,lox_obj);
+            }
+            else{
+                break;
+            }
+        }
+        return exp;
+    }
+
+    fn finish_call(&mut self,callee:expr::Expr,lox_obj:&mut lox::Lox)->expr::Expr{
+
+        let mut arguments:Vec<expr::ExprBox>=Vec::new();
+        if !self.check(token::TokenType::RightParen){
+            loop {
+                if arguments.len()>=255{
+                    let tok=self.peek();
+                    self.error_non_throw(tok, "Can't have more than 255 arguments.".to_string(), lox_obj)
+                }
+                arguments.push(Box::new(self.expression(lox_obj)));
+                if self.match_(vec![token::TokenType::Comma]){
+                    break;
+                }
+            }
+        }
+        let paren=self.consume(token::TokenType::RightParen, "Expect ')' after arguments.".to_string(), lox_obj);
+        return expr::Expr::Call(Box::new(expr::Call { callee: Box::new(callee), paren: paren, arguments: arguments }));
+
     }
 
     fn primary(&mut self,lox_obj:&mut lox::Lox) ->Option<expr::Expr>{
@@ -176,6 +211,9 @@ impl Parser {
             self.error(peek, message, lox_obj);
         
     }
+    fn error_non_throw(&mut self,tok:token::Token,message:String,lox_obj:&mut lox::Lox){
+        lox_obj.errorp(tok, message);
+    }
     fn error(&mut self,tok:token::Token,message:String,lox_obj:&mut lox::Lox)->!{
         lox_obj.errorp(tok, message);
         std::panic::panic_any(ParseError);
@@ -233,6 +271,10 @@ impl Parser {
   fn declaration(&mut self,lox_obj:&mut lox::Lox)->Option<stmt::Stmt>{
 
        let p = std::panic::catch_unwind(AssertUnwindSafe(|| {
+
+        if self.match_(vec![token::TokenType::Fun]){
+            return self.function("function".to_string(),lox_obj);
+        }
         if self.match_(vec![token::TokenType::Var]){
             return self.var_declaration(lox_obj);
         }
@@ -252,6 +294,29 @@ impl Parser {
         }
     
   }
+
+  fn function(&mut self,kind:String,lox_obj:&mut lox::Lox)->stmt::Stmt{
+    let name=self.consume(token::TokenType::Identifier, "Expect ".to_string()+&kind+&" name".to_string(), lox_obj);
+    self.consume(token::TokenType::LeftParen, "Expect ".to_string()+&kind+&" name".to_string(), lox_obj);
+    let mut parameters:Vec<token::Token>=Vec::new();
+    if !self.check(token::TokenType::RightParen){
+        loop {
+            if parameters.len()>=255{
+                let p=self.peek();
+                self.error_non_throw(p, "Can't have more than 255 parameters.".to_string(), lox_obj);
+            }
+            parameters.push(self.consume(token::TokenType::Identifier, "Expect parameter name.".to_string(), lox_obj));
+            if self.match_(vec![token::TokenType::Comma]){
+                break;
+            }               
+        }        
+    }
+    self.consume(token::TokenType::RightParen, "Expect ')' after parameters.".to_string(), lox_obj);
+    self.consume(token::TokenType::LeftBrace, "Expect '{' before ".to_string()+&kind+&" body.".to_string(), lox_obj);
+    let body=self.block(lox_obj);
+    return stmt::Stmt::Function(Box::new(stmt::Function { name: name, params: parameters, body: body }));
+  }
+
   fn var_declaration(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
     let name:token::Token=self.consume(token::TokenType::Identifier, "Expect variable name.".to_string(), lox_obj);
     let mut initializer=expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil}));

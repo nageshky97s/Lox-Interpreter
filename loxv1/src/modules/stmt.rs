@@ -10,6 +10,13 @@ pub enum Stmt{
      Block(Box<Block>),
      If(Box<If>),
      While(Box<While>),
+     Function(Box<Function>),
+}
+#[derive(PartialEq)]
+pub struct Function{
+    pub name :token::Token,
+    pub params :Vec<token::Token>,
+    pub body:Vec<Stmt>,
 }
 #[derive(PartialEq)]
 pub struct While{
@@ -41,6 +48,7 @@ pub trait StmtVisitor<R> {
     fn visit_block_stmt(&mut self, visitor: &Block) -> R;
     fn visit_if_stmt(&mut self, visitor: &If) -> R;
     fn visit_while_stmt(&mut self, visitor: &While) -> R;
+    fn visit_function_stmt(&mut self, visitor: &Function) -> R;
 }
 pub trait StmtAccept<R> {
     fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R;
@@ -55,6 +63,7 @@ impl<R> StmtAccept<R> for Stmt {
             Stmt::Block(x)=>visitor.visit_block_stmt(x),
             Stmt::If(x)=>visitor.visit_if_stmt(x),
             Stmt::While(x)=>visitor.visit_while_stmt(x),
+            Stmt::Function(x)=>visitor.visit_function_stmt(x),
         }
     }
 }
@@ -89,5 +98,10 @@ impl<R> StmtAccept<R> for If {
 impl<R> StmtAccept<R> for While {
     fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_while_stmt(self)
+    }
+}
+impl<R> StmtAccept<R> for Function {
+    fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_function_stmt(self)
     }
 }

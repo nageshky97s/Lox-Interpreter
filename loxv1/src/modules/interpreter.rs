@@ -1,5 +1,5 @@
 use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment};
-use std::panic::AssertUnwindSafe;
+use std::{ panic::AssertUnwindSafe};
 
 pub struct RuntimeError{
     pub tok:token::Token,
@@ -129,6 +129,7 @@ fn stringify(&mut self,value:token::Literals)->String{
         token::Literals::NumLit { numval }=>{return numval.to_string();}
         token::Literals::Nil =>{return "nil".to_string();}
         token::Literals::StringLit { stringval }=>{return stringval;}
+        token::Literals::Function { funcval }=>{return funcval;}
     }
 }
 
@@ -160,6 +161,10 @@ fn execute_block(&mut self,statements:& Vec< stmt::Stmt>){
 }
 
 impl stmt::StmtVisitor<()> for Interpreter{
+
+    fn visit_function_stmt(&mut self, visitor: &stmt::Function) -> () {
+        
+    }
 
     fn visit_while_stmt(&mut self, stm: &stmt::While) -> () {
         let mut res =self.evaluate(&stm.condition);       
@@ -207,6 +212,28 @@ impl stmt::StmtVisitor<()> for Interpreter{
 
 
 impl expr::AstVisitor<token::Literals> for Interpreter{
+
+    fn visit_call(&mut self, visitor: &expr::Call) -> token::Literals {
+        // let callee=self.evaluate(&visitor.callee);
+        // let arguments:Vec<token::Literals>=Vec::new();
+        // for arg in visitor.arguments.iter_mut(){
+        //     arguments.push(self.evaluate(arg));
+        // }
+       
+        // if !isLoxcallabe{
+        //     std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),mess:"Can only call functions and classes.".to_string()});
+        // }
+        // let function = callee;
+        // if arguments.len()!= function.arity(){
+        //     std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),
+        //         mess:"Expected ".to_string()+function.arity.to_string+&" arguments but got ".to_string()+
+        //     &arguments.len().to_string()+&".".to_string()});
+        // }
+
+        // return function.call(self,arguments);
+        return token::Literals::Nil;
+
+    }
 
     fn visit_logical(&mut self, visitor: &expr::Logical) -> token::Literals {
         let left=self.evaluate(&visitor.left);

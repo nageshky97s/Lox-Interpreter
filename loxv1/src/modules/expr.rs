@@ -1,4 +1,5 @@
 use crate::modules::token;
+
 #[derive(Debug,PartialEq)]
 pub enum Expr {
     //Empty,
@@ -8,9 +9,20 @@ pub enum Expr {
     Unary(Box<Unary>),
     Variable(Box<Variable>),
     Assign(Box<Assign>),
-    Logical(Box<Logical>)
+    Logical(Box<Logical>),
+    Call(Box<Call>),
 }
 pub type ExprBox = Box<Expr>;
+
+#[derive(Debug,PartialEq)]
+
+pub struct Call{
+    pub callee:ExprBox,
+    pub paren:token::Token,
+    pub arguments:Vec<ExprBox>,
+}
+
+
 
 #[derive(Debug,PartialEq)]
 pub struct Logical{
@@ -60,6 +72,8 @@ pub trait AstVisitor<R> {
     fn visit_variable(&mut self, visitor: &Variable) -> R;
     fn visit_assign(&mut self, visitor: &Assign) -> R;
     fn visit_logical(&mut self, visitor: &Logical) -> R;
+    fn visit_call(&mut self, visitor: &Call) -> R;
+
 }
 pub trait Accept<R> {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R;
@@ -77,6 +91,7 @@ impl<R> Accept<R> for Expr {
             Expr::Variable(x) => visitor.visit_variable(x),
             Expr::Assign(x)=>visitor.visit_assign(x),
             Expr::Logical(x)=>visitor.visit_logical(x),
+            Expr::Call(x)=>visitor.visit_call(x),
 
         }
     }
@@ -90,6 +105,11 @@ impl<R> Accept<R> for Assign {
 impl<R> Accept<R> for Binary {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_binary(self)
+    }
+}
+impl<R> Accept<R> for Call {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_call(self)
     }
 }
 impl<R> Accept<R> for Grouping {

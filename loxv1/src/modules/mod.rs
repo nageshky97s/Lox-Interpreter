@@ -7,3 +7,5 @@ pub mod parser;
 pub mod interpreter;
 pub mod stmt;
 pub mod environment;
+pub mod loxcallable;
+pub mod loxfunction;

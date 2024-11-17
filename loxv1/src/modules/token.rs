@@ -71,6 +71,8 @@ pub enum Literals{
     StringLit{stringval:String},
     BooleanLit{boolval:bool},
     Nil, 
+    Function{funcval:String},
+   
    
 }
 impl fmt::Display for Literals {
@@ -80,6 +82,7 @@ impl fmt::Display for Literals {
         Self::StringLit { stringval }=>write!(f,"{}",stringval),
         Self::BooleanLit { boolval }=>write!(f,"{}",boolval),
         Self::Nil =>write!(f,"NULL or NIL TYPE"),
+        Self::Function { funcval } =>write!(f,"Function name: {}",funcval),
        }
     }
 }

@@ -63,26 +63,28 @@ impl Lox {
         let mut scanner=lexer::Scanner::new(line); 
         scanner.scan_tokens(self);   
         
-        // for i in scanner.tokens.iter(){
-
+        for i in scanner.tokens.iter(){
             
-        //     match  &i.literal{
-        //         Some(token::Literals::NumLit{numval})=> { 
-        //             println!("{} {} {} {}",i.lexeme,i.line,i.token_type,numval)
-        //         },
-        //         Some(token::Literals::StringLit{stringval})=> { 
-        //             println!("{} {} {} {}",i.lexeme,i.line,i.token_type,stringval)
-        //         },
-        //         Some(token::Literals::BooleanLit{boolval})=> { 
-        //             println!("{} {} {} {}",i.lexeme,i.line,i.token_type,boolval)
-        //         },
-        //         Some(token::Literals::Nil)=>{
-        //             println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NULL or NIL TYPE")
-        //         },
-        //         None=> println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NONE"),
-        //     }
+            match  &i.literal{
+                Some(token::Literals::NumLit{numval})=> { 
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,numval)
+                },
+                Some(token::Literals::StringLit{stringval})=> { 
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,stringval)
+                },
+                Some(token::Literals::BooleanLit{boolval})=> { 
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,boolval)
+                },
+                Some(token::Literals::Nil)=>{
+                    println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NULL or NIL TYPE")
+                },
+                Some(token::Literals::Function { funcval })=>{
+                    println!("{} {} {} {} {}",i.lexeme,i.line,i.token_type,"Function Type : {}",funcval);
+                },
+                None=> println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NONE"),
+            }
            
-        // }    
+        }    
         //let expression=expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::NumLit{numval:45.67} }));
         let mut parser=parser::Parser::new(scanner.tokens);
         // let expression=parser.parse(self);
