@@ -1,19 +1,35 @@
-use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment};
-use std::{ panic::AssertUnwindSafe};
+use super::loxcallable::Callable;
+use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment,loxfunction,loxcallable,loxcallable::LoxCallable};
+use std::panic::AssertUnwindSafe;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct RuntimeError{
     pub tok:token::Token,
     pub mess:String
 }
 
+pub struct ReturnVal{
+    pub value:token::Literals,
+}
+
+
 pub struct Interpreter{
-   pub environment:environment::Environment
+    pub globals:Rc<RefCell<environment::Environment>>,
+    pub environment: Rc<RefCell<environment::Environment>>,
 }
 
 impl Interpreter {
     pub fn new()->Self{
-        Interpreter{environment:environment::Environment::new()}
-    }
+       
+            let globals = Rc::new(RefCell::new(environment::Environment::new()));
+
+            Interpreter {
+                globals: Rc::clone(&globals),
+                environment: Rc::clone(&globals),
+               }
+    
+}
     fn evaluate(&mut self,exp:&expr::Expr)->token::Literals{
         return exp.accept(self)
     }
@@ -95,7 +111,7 @@ fn check_number_operands_(&mut self,tok:token::Token,left:token::Literals,right:
 // }
 pub fn interpret_new(&mut self, lox_obj:&mut lox::Lox){
     
-    let res = std::panic::catch_unwind(AssertUnwindSafe(|| {
+    let res = loxfunction::catch_unwind_silent(AssertUnwindSafe(|| {
         match &mut lox_obj.allstatements {
             Some(x)=>{
                 for statement in x.iter_mut(){
@@ -129,29 +145,28 @@ fn stringify(&mut self,value:token::Literals)->String{
         token::Literals::NumLit { numval }=>{return numval.to_string();}
         token::Literals::Nil =>{return "nil".to_string();}
         token::Literals::StringLit { stringval }=>{return stringval;}
-        token::Literals::Function { funcval }=>{return funcval;}
+        token::Literals::Callable(c) => match c {
+           loxcallable::Callable::Function(func) => func.to_string(),
+            //_ => "callable".to_string(),
+        },
     }
 }
 
-fn execute_block(&mut self,statements:& Vec< stmt::Stmt>){
-    
-    let res = std::panic::catch_unwind(AssertUnwindSafe(|| {                
+pub fn execute_block(&mut self,statements:& Vec< stmt::Stmt>,environment: environment::Environment,){
+    let previous = Rc::clone(&self.environment);
+    let res = loxfunction::catch_unwind_silent(AssertUnwindSafe(|| {     
+        self.environment = Rc::new(RefCell::new(environment));           
         for statement in statements{
             self.execute(statement);
         }
     }));   
    
     match res {
-        Ok(_x)=>{
-            if self.environment.env_values.len()>1{
-                self.environment.env_values.pop();
-            }
-           
+        Ok(_x)=>{            
+            self.environment = previous;
         } 
         Err(payload) => {
-            if self.environment.env_values.len()>1{
-                self.environment.env_values.pop();
-            }
+            self.environment = previous;
             std::panic::resume_unwind(payload)},
         
     }
@@ -162,8 +177,19 @@ fn execute_block(&mut self,statements:& Vec< stmt::Stmt>){
 
 impl stmt::StmtVisitor<()> for Interpreter{
 
+    fn visit_return_stmt(&mut self, visitor: &stmt::Return) -> () {
+        let mut value:token::Literals=token::Literals::Nil;
+        if visitor.value!=None{
+            value=self.evaluate(visitor.value.as_ref().unwrap());
+        }
+        std::panic::panic_any(ReturnVal{value:value});
+
+    }
+
     fn visit_function_stmt(&mut self, visitor: &stmt::Function) -> () {
-        
+        let function= loxfunction::LoxFunction::new(visitor.clone());
+        self.environment.borrow_mut().define(visitor.name.lexeme.clone(),
+                                token::Literals::Callable(loxcallable::Callable::Function(function)),);
     }
 
     fn visit_while_stmt(&mut self, stm: &stmt::While) -> () {
@@ -197,15 +223,15 @@ impl stmt::StmtVisitor<()> for Interpreter{
 
     fn visit_var_stmt(&mut self, stm: &stmt::Var) -> () {
         let mut value =token::Literals::Nil;
-        if stm.initializer!=expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil})){
+        if stm.initializer!=expr::Expr::Literal(expr::Literal{value:token::Literals::Nil}){
             value=self.evaluate(&stm.initializer);
         }
-        self.environment.define(stm.name.lexeme.clone(), value);
+        self.environment.borrow_mut().define(stm.name.lexeme.clone(), value);
     }
 
     fn visit_block_stmt(&mut self, visitor: &stmt::Block) -> () {
-        self.environment.new_env();
-        self.execute_block(&visitor.statements,);
+        
+        self.execute_block(&visitor.statements,environment::Environment::new_env(self.environment.clone()));
     }
 
 }
@@ -214,25 +240,27 @@ impl stmt::StmtVisitor<()> for Interpreter{
 impl expr::AstVisitor<token::Literals> for Interpreter{
 
     fn visit_call(&mut self, visitor: &expr::Call) -> token::Literals {
-        // let callee=self.evaluate(&visitor.callee);
-        // let arguments:Vec<token::Literals>=Vec::new();
-        // for arg in visitor.arguments.iter_mut(){
-        //     arguments.push(self.evaluate(arg));
-        // }
+        let callee=self.evaluate(&visitor.callee);
+        let mut arguments:Vec<token::Literals>=Vec::new();
+        for arg in visitor.arguments.iter(){
+            arguments.push(self.evaluate(arg));
+        }
        
-        // if !isLoxcallabe{
-        //     std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),mess:"Can only call functions and classes.".to_string()});
-        // }
-        // let function = callee;
-        // if arguments.len()!= function.arity(){
-        //     std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),
-        //         mess:"Expected ".to_string()+function.arity.to_string+&" arguments but got ".to_string()+
-        //     &arguments.len().to_string()+&".".to_string()});
-        // }
-
-        // return function.call(self,arguments);
-        return token::Literals::Nil;
-
+                 
+          
+        if let token::Literals::Callable(Callable::Function(function)) = callee {
+           
+            if arguments.len()== function.arity(){
+                return function.call(self,&arguments);
+            }
+            else{
+                std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),
+                    mess:"Expected ".to_string()+&function.arity().to_string()+&" arguments but got ".to_string()+
+                &arguments.len().to_string()+&".".to_string()});
+            }
+        }
+        std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),mess:"Can only call functions and classes.".to_string()}); 
+       
     }
 
     fn visit_logical(&mut self, visitor: &expr::Logical) -> token::Literals {
@@ -407,14 +435,14 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
 
     }
     fn visit_variable(&mut self, visitor: &expr::Variable) -> token::Literals {
-        self.environment.getval(&visitor.name)
+        self.environment.borrow_mut().get(&visitor.name)
         
     }
 
     fn visit_assign(&mut self, visitor: &expr::Assign) -> token::Literals {
         
         let value = self.evaluate(&visitor.value);
-        self.environment.assign(&visitor.name,value.clone());
+        self.environment.borrow_mut().assign(&visitor.name,value.clone());
         return value;
     }
     

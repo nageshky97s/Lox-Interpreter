@@ -78,8 +78,8 @@ impl Lox {
                 Some(token::Literals::Nil)=>{
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NULL or NIL TYPE")
                 },
-                Some(token::Literals::Function { funcval })=>{
-                    println!("{} {} {} {} {}",i.lexeme,i.line,i.token_type,"Function Type : {}",funcval);
+                Some(token::Literals::Callable(x))=>{
+                    println!("{} {} {} {} {}",i.lexeme,i.line,i.token_type,"Function Type : {}",x);
                 },
                 None=> println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NONE"),
             }

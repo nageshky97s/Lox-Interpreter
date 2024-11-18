@@ -1,6 +1,1 @@
-fun hello(){
-    print "hello";
-}
-
-hello();
-var a=0;
+print hello;

@@ -4,6 +4,8 @@ use crate::modules::lox;
 use crate::modules::stmt;
 use std::panic::AssertUnwindSafe;
 
+use super::loxfunction;
+
 
 
 pub struct Parser{
@@ -27,8 +29,8 @@ impl Parser {
             let equals=self.previous();
             let value=self.assignment(lox_obj);
             if let expr::Expr::Variable(name)= exp {
-                let name_=(*name).name.clone();
-                return expr::Expr::Assign(Box::new(expr::Assign{name:name_,value:Box::new(value)}))
+                let name_=name.name.clone();
+                return expr::Expr::Assign(expr::Assign{name:name_,value:Box::new(value)})
             }
             self.error(equals, "Invalid assignment target.".to_string(), lox_obj)
         }
@@ -39,7 +41,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::Or]) {
             let operator =self.previous();
             let right = self.and(lox_obj);
-            exp = expr::Expr::Logical(Box::new(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+            exp = expr::Expr::Logical(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         exp
     }
@@ -48,7 +50,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::And]) {
             let operator =self.previous();
             let right = self.equality(lox_obj);
-            exp=expr::Expr::Logical(Box::new(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+            exp=expr::Expr::Logical(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         exp
 
@@ -58,7 +60,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::BangEqual,token::TokenType::EqualEqual]){
             let  operator:token::Token = self.previous();
             let  right:expr::Expr=self.comparison(lox_obj);
-            exp=expr::Expr::Binary(Box::new(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+            exp=expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         exp
 
@@ -72,7 +74,7 @@ impl Parser {
             {
                 let  operator:token::Token=self.previous();
                 let  right:expr::Expr=self.term(lox_obj);
-                exp= expr::Expr::Binary(Box::new(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+                exp= expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
             }
             exp
     }
@@ -81,7 +83,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::Minus,token::TokenType::Plus]){
             let  operator =self.previous();
             let  right:expr::Expr=self.factor(lox_obj);
-            exp= expr::Expr::Binary(Box::new(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+            exp= expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         exp
 
@@ -91,7 +93,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::Slash,token::TokenType::Star]) {
             let  operator =self.previous();
             let  right:expr::Expr=self.unary(lox_obj);
-            exp= expr::Expr::Binary(Box::new(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)}));
+            exp= expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
             
         }
         exp
@@ -101,7 +103,7 @@ impl Parser {
         if self.match_(vec![token::TokenType::Bang,token::TokenType::Minus]){
             let operator =self.previous();
             let right:expr::Expr=self.unary(lox_obj);
-            return expr::Expr::Unary(Box::new(expr::Unary{operator:operator,right:Box::new(right)}));
+            return expr::Expr::Unary(expr::Unary{operator:operator,right:Box::new(right)});
         }
 
         return self.call(lox_obj);
@@ -130,40 +132,40 @@ impl Parser {
                     self.error_non_throw(tok, "Can't have more than 255 arguments.".to_string(), lox_obj)
                 }
                 arguments.push(Box::new(self.expression(lox_obj)));
-                if self.match_(vec![token::TokenType::Comma]){
+                if !self.match_(vec![token::TokenType::Comma]){
                     break;
                 }
             }
         }
         let paren=self.consume(token::TokenType::RightParen, "Expect ')' after arguments.".to_string(), lox_obj);
-        return expr::Expr::Call(Box::new(expr::Call { callee: Box::new(callee), paren: paren, arguments: arguments }));
+        return expr::Expr::Call(expr::Call { callee: Box::new(callee), paren: paren, arguments: arguments });
 
     }
 
     fn primary(&mut self,lox_obj:&mut lox::Lox) ->Option<expr::Expr>{
         
         if self.match_(vec![token::TokenType::False]){
-        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::BooleanLit { boolval: false }}))); }
+        return Some(expr::Expr::Literal(expr::Literal{value:token::Literals::BooleanLit { boolval: false }})); }
         else if self.match_(vec![token::TokenType::True]){
-        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::BooleanLit { boolval: true }}))); }
+        return Some(expr::Expr::Literal(expr::Literal{value:token::Literals::BooleanLit { boolval: true }})); }
         else if self.match_(vec![token::TokenType::Nil]){
-        return Some(expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil}))); }
+        return Some(expr::Expr::Literal(expr::Literal{value:token::Literals::Nil})); }
         else if self.match_(vec![token::TokenType::Number,token::TokenType::String]){
             match self.previous().literal {
                 Some(x)=>{
-                    return Some(expr::Expr::Literal(Box::new(expr::Literal{value:x})));
+                    return Some(expr::Expr::Literal(expr::Literal{value:x}));
                 }
                 None=>{return None;}
             }
         
         }
         else if self.match_(vec![token::TokenType::Identifier]){
-            return Some(expr::Expr::Variable(Box::new(expr::Variable { name: self.previous() })))
+            return Some(expr::Expr::Variable(expr::Variable { name: self.previous() }))
         }
         else if self.match_(vec![token::TokenType::LeftParen]){
             let  exp:expr::Expr =self.expression(lox_obj) ;
             self.consume(token::TokenType::RightParen, "Expect ')' after expression".to_string(),lox_obj);
-            return Some(expr::Expr::Grouping(Box::new(expr::Grouping{expression:Box::new(exp)})));      
+            return Some(expr::Expr::Grouping(expr::Grouping{expression:Box::new(exp)}));      
         
         }
         else{
@@ -270,7 +272,7 @@ impl Parser {
   }
   fn declaration(&mut self,lox_obj:&mut lox::Lox)->Option<stmt::Stmt>{
 
-       let p = std::panic::catch_unwind(AssertUnwindSafe(|| {
+       let p = loxfunction::catch_unwind_silent(AssertUnwindSafe(|| {
 
         if self.match_(vec![token::TokenType::Fun]){
             return self.function("function".to_string(),lox_obj);
@@ -306,25 +308,26 @@ impl Parser {
                 self.error_non_throw(p, "Can't have more than 255 parameters.".to_string(), lox_obj);
             }
             parameters.push(self.consume(token::TokenType::Identifier, "Expect parameter name.".to_string(), lox_obj));
-            if self.match_(vec![token::TokenType::Comma]){
+            if !self.match_(vec![token::TokenType::Comma]){
                 break;
             }               
-        }        
+        }  
+         
     }
-    self.consume(token::TokenType::RightParen, "Expect ')' after parameters.".to_string(), lox_obj);
+    self.consume(token::TokenType::RightParen, "Expect ')' after parameters.".to_string(), lox_obj);   
     self.consume(token::TokenType::LeftBrace, "Expect '{' before ".to_string()+&kind+&" body.".to_string(), lox_obj);
     let body=self.block(lox_obj);
-    return stmt::Stmt::Function(Box::new(stmt::Function { name: name, params: parameters, body: body }));
+    return stmt::Stmt::Function(stmt::Function { name: name, params: parameters, body: body });
   }
 
   fn var_declaration(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
     let name:token::Token=self.consume(token::TokenType::Identifier, "Expect variable name.".to_string(), lox_obj);
-    let mut initializer=expr::Expr::Literal(Box::new(expr::Literal{value:token::Literals::Nil}));
+    let mut initializer=expr::Expr::Literal(expr::Literal{value:token::Literals::Nil});
     if self.match_(vec![token::TokenType::Equal]){
         initializer=self.expression(lox_obj);
     }
     self.consume(token::TokenType::Semicolon, "Expect ';' after variable declaration.".to_string(), lox_obj);
-    stmt::Stmt::Var(Box::new(stmt::Var { name: name, initializer: initializer }))
+    stmt::Stmt::Var(stmt::Var { name: name, initializer: initializer })
   }
 
 
@@ -340,16 +343,29 @@ impl Parser {
     if self.match_(vec![token::TokenType::Print]){        
       return self.print_statement(lox_obj);
     }
+    if self.match_(vec![token::TokenType::Return]){
+        return self.return_statement(lox_obj);
+    }
     if self.match_(vec![token::TokenType::While]){
         return self.while_statement(lox_obj);
     }
     if self.match_(vec![token::TokenType::LeftBrace]){
         
-        return stmt::Stmt::Block(Box::new(stmt::Block{statements:self.block(lox_obj)}));
+        return stmt::Stmt::Block(stmt::Block{statements:self.block(lox_obj)});
     }
     
     
     self.expression_statement(lox_obj)
+}
+
+fn return_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
+    let keyword=self.previous();
+    let mut value:Option<expr::Expr>=None;
+    if !self.check(token::TokenType::Semicolon){
+        value=Some(self.expression(lox_obj));
+    }
+    self.consume(token::TokenType::Semicolon, "Expect ';' after return value.".to_string(), lox_obj);
+    return stmt::Stmt::Return(stmt::Return { keyword: keyword, value: value});
 }
 
 fn for_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
@@ -374,17 +390,17 @@ fn for_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
     self.consume(token::TokenType::RightParen, "Expect ')' after for clauses.".to_string(), lox_obj);
     let mut body=self.statement(lox_obj);
     if increment!=None{
-        body=stmt::Stmt::Block(Box::new(stmt::Block { statements: vec![body,
-            stmt::Stmt::Expression(Box::new(stmt::Expression { expression: increment.unwrap() }))] }));
+        body=stmt::Stmt::Block(stmt::Block { statements: vec![body,
+            stmt::Stmt::Expression(stmt::Expression { expression: increment.unwrap() })] });
     }
 
     if condition==None{
-        condition=Some(expr::Expr::Literal(Box::new(expr::Literal { value: token::Literals::BooleanLit { boolval: true } })));
+        condition=Some(expr::Expr::Literal(expr::Literal { value: token::Literals::BooleanLit { boolval: true } }));
     }
-    body=stmt::Stmt::While(Box::new(stmt::While { condition: condition.unwrap(), body: Box::new(body) }));
+    body=stmt::Stmt::While(stmt::While { condition: condition.unwrap(), body: Box::new(body) });
 
     if initializer!=None{
-        body=stmt::Stmt::Block(Box::new(stmt::Block { statements: vec![initializer.unwrap(),body] }));
+        body=stmt::Stmt::Block(stmt::Block { statements: vec![initializer.unwrap(),body] });
     }
 
     return body;
@@ -395,7 +411,7 @@ fn while_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt{
     let condition=self.expression(lox_obj);
     self.consume(token::TokenType::RightParen, "Expect ')' after condition.".to_string(), lox_obj);
     let body = self.statement(lox_obj);
-    return stmt::Stmt::While(Box::new(stmt::While { condition: condition, body: Box::new(body) }));
+    return stmt::Stmt::While(stmt::While { condition: condition, body: Box::new(body) });
 }
 
 fn if_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
@@ -407,20 +423,20 @@ fn if_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
     if self.match_(vec![token::TokenType::Else]){
         else_branch=Some(self.statement(lox_obj));
     }
-    return stmt::Stmt::If(Box::new(stmt::If { condition: condition, then_branch: Box::new(then_branch), else_branch: Box::new(else_branch) }));
+    return stmt::Stmt::If(stmt::If { condition: condition, then_branch: Box::new(then_branch), else_branch: Box::new(else_branch) });
 }
 fn print_statement(&mut self,lox_obj:&mut lox::Lox)->stmt::Stmt {
     
     let value:expr::Expr=self.expression(lox_obj);
     self.consume(token::TokenType::Semicolon, "Expect ';' after value.".to_string(), lox_obj);
-    stmt::Stmt::Print(Box::new(stmt::Print{expression:value}))
+    stmt::Stmt::Print(stmt::Print{expression:value})
     
         
 }
 fn expression_statement(&mut self,lox_obj:&mut lox::Lox,)->stmt::Stmt {
     let exp:expr::Expr=self.expression(lox_obj);
     self.consume(token::TokenType::Semicolon, "Expect ';' after value.".to_string(), lox_obj);
-    stmt::Stmt::Expression(Box::new(stmt::Expression{expression:exp}))
+    stmt::Stmt::Expression(stmt::Expression{expression:exp})
 
 
 }
@@ -432,6 +448,7 @@ fn block(&mut self,lox_obj:&mut lox::Lox,)->Vec<stmt::Stmt> {
             _=>{}
         }       
     }
+    
     self.consume(token::TokenType::RightBrace, "Expect '}' after block.".to_string(), lox_obj);
     statements
 }

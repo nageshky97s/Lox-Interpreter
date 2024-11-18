@@ -2,41 +2,47 @@ use crate::modules::expr;
 use super::token;
 
 
-#[derive(PartialEq)]
+#[derive(PartialEq,Clone)]
 pub enum Stmt{
-     Expression(Box<Expression>),
-     Print(Box<Print>),
-     Var(Box<Var>),
-     Block(Box<Block>),
-     If(Box<If>),
-     While(Box<While>),
-     Function(Box<Function>),
+     Expression(Expression),
+     Print(Print),
+     Var(Var),
+     Block(Block),
+     If(If),
+     While(While),
+     Function(Function),
+     Return(Return),
 }
-#[derive(PartialEq)]
+#[derive(PartialEq,Clone)]
+pub struct Return{
+    pub keyword:token::Token,
+    pub value:Option<expr::Expr>,
+}
+#[derive(PartialEq,Clone)]
 pub struct Function{
     pub name :token::Token,
     pub params :Vec<token::Token>,
     pub body:Vec<Stmt>,
 }
-#[derive(PartialEq)]
+#[derive(PartialEq,Clone)]
 pub struct While{
     pub condition :expr::Expr,
     pub body:Box<Stmt>,
-}#[derive(PartialEq)]
+}#[derive(PartialEq,Clone)]
 pub struct If{
     pub condition :expr::Expr,
     pub then_branch :Box<Stmt>,
     pub else_branch :Box<Option<Stmt>>,
-}#[derive(PartialEq)]
+}#[derive(PartialEq,Clone)]
 pub struct Block{
     pub statements:Vec<Stmt>,
-}#[derive(PartialEq)]
+}#[derive(PartialEq,Clone)]
 pub  struct Expression{
     pub expression :expr::Expr
-}#[derive(PartialEq)]
+}#[derive(PartialEq,Clone)]
 pub struct Print{
     pub expression :expr::Expr
-}#[derive(PartialEq)]
+}#[derive(PartialEq,Clone)]
 pub struct Var{
     pub name : token::Token,
     pub initializer :expr::Expr
@@ -49,6 +55,7 @@ pub trait StmtVisitor<R> {
     fn visit_if_stmt(&mut self, visitor: &If) -> R;
     fn visit_while_stmt(&mut self, visitor: &While) -> R;
     fn visit_function_stmt(&mut self, visitor: &Function) -> R;
+    fn visit_return_stmt(&mut self, visitor: &Return) -> R;
 }
 pub trait StmtAccept<R> {
     fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R;
@@ -64,6 +71,7 @@ impl<R> StmtAccept<R> for Stmt {
             Stmt::If(x)=>visitor.visit_if_stmt(x),
             Stmt::While(x)=>visitor.visit_while_stmt(x),
             Stmt::Function(x)=>visitor.visit_function_stmt(x),
+            Stmt::Return(x)=>visitor.visit_return_stmt(x),
         }
     }
 }
@@ -103,5 +111,11 @@ impl<R> StmtAccept<R> for While {
 impl<R> StmtAccept<R> for Function {
     fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_function_stmt(self)
+    }
+}
+
+impl<R> StmtAccept<R> for Return {
+    fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_return_stmt(self)
     }
 }

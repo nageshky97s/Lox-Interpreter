@@ -1,20 +1,20 @@
 use crate::modules::token;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Expr {
     //Empty,
-    Binary(Box<Binary>),
-    Grouping(Box<Grouping>),
-    Literal(Box<Literal>),
-    Unary(Box<Unary>),
-    Variable(Box<Variable>),
-    Assign(Box<Assign>),
-    Logical(Box<Logical>),
-    Call(Box<Call>),
+    Binary(Binary),
+    Grouping(Grouping),
+    Literal(Literal),
+    Unary(Unary),
+    Variable(Variable),
+    Assign(Assign),
+    Logical(Logical),
+    Call(Call),
 }
 pub type ExprBox = Box<Expr>;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 
 pub struct Call{
     pub callee:ExprBox,
@@ -24,7 +24,7 @@ pub struct Call{
 
 
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub struct Logical{
     pub left:ExprBox,
     pub operator:token::Token,
@@ -33,20 +33,20 @@ pub struct Logical{
 
 
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub struct Assign{
     pub name: token::Token,
     pub value:ExprBox,
 }
 
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub struct Binary {
     pub left: ExprBox,
     pub operator: token::Token,
     pub right: ExprBox,
 }
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub struct Grouping {
     pub expression: ExprBox,
 }
@@ -54,7 +54,7 @@ pub struct Grouping {
 pub struct Literal {
     pub value: token::Literals,
 }
-#[derive(Debug,PartialEq)]
+#[derive(Debug,PartialEq,Clone)]
 pub struct Unary {
     pub operator: token::Token,
     pub right: ExprBox,
