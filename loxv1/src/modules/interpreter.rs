@@ -1,14 +1,20 @@
 use super::loxcallable::Callable;
 use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment,loxfunction,loxcallable,loxcallable::LoxCallable};
-use std::panic::AssertUnwindSafe;
 use std::cell::RefCell;
 use std::rc::Rc;
+
+
+pub enum Exit {
+    RuntimeErr(RuntimeError),
+    Return(ReturnVal),
+    
+}
 
 pub struct RuntimeError{
     pub tok:token::Token,
     pub mess:String
 }
-
+#[derive(Debug,Clone)]
 pub struct ReturnVal{
     pub value:token::Literals,
 }
@@ -20,17 +26,15 @@ pub struct Interpreter{
 }
 
 impl Interpreter {
-    pub fn new()->Self{
-       
-            let globals = Rc::new(RefCell::new(environment::Environment::new()));
-
+    pub fn new()->Self{       
+            let globals = Rc::new(RefCell::new(environment::Environment::new()));            
             Interpreter {
                 globals: Rc::clone(&globals),
                 environment: Rc::clone(&globals),
                }
     
 }
-    fn evaluate(&mut self,exp:&expr::Expr)->token::Literals{
+    fn evaluate(&mut self,exp:&expr::Expr)->Result<token::Literals,Exit>{
         return exp.accept(self)
     }
     fn is_truthy(&mut self,val:token::Literals)->bool{
@@ -76,65 +80,45 @@ fn error_exit(&mut self,)->!{
     println!("Massive Logical Error cannot be a type other than Number here");
     std::process::exit(1);
 }
-fn check_number_operands(&mut self,tok:token::Token,operand:token::Literals){
+fn check_number_operands(&mut self,tok:token::Token,operand:token::Literals)->Result<(),Exit>{
     if let token::Literals::NumLit { numval:_ } =operand{
-        return ;
+        return Ok(()) ;
     }else{
-        std::panic::panic_any(RuntimeError{tok:tok.clone(),mess:"Operand must be a number".to_string()});
+        return Err(Exit::RuntimeErr(RuntimeError{tok:tok.clone(),mess:"Operand must be a number".to_string()}));
+       
     }
 }
-fn check_number_operands_(&mut self,tok:token::Token,left:token::Literals,right:token::Literals){
+fn check_number_operands_(&mut self,tok:token::Token,left:token::Literals,right:token::Literals)->Result<(),Exit>{
     if let token::Literals::NumLit { numval:_} =left{
         if let token::Literals::NumLit { numval:_ } =right {
-            return;
+            return Ok(()) ;
         }else{
-            std::panic::panic_any(RuntimeError{tok:tok.clone(),mess:"Operand must be two numbers or two strings".to_string()});
+            return Err(Exit::RuntimeErr(RuntimeError{tok:tok.clone(),mess:"Operand must be two numbers or two strings".to_string()}));
+            
         }
     }else{
-        std::panic::panic_any(RuntimeError{tok:tok.clone(),mess:"Operand must be two numbers or two strings".to_string()});
+        return Err(Exit::RuntimeErr(RuntimeError{tok:tok.clone(),mess:"Operand must be two numbers or two strings".to_string()}));
     }
 }
 
-// pub fn interpret(&mut self,exp:expr::Expr,lox_obj:&mut lox::Lox){
-//     let res = std::panic::catch_unwind(AssertUnwindSafe(|| self.evaluate(&exp)));
-//     match res {
-//         Ok(x)=>{
-//             println!("{}",self.stringify(x));
-//         } 
-//         Err(payload)if payload.is::<RuntimeError>()=>{
-//             println!("Runtime Error");
-//             lox_obj.runtimeerror(*payload.downcast().expect("The value must be of type RuntimeError"));
-//         },
-//         Err(payload) => std::panic::resume_unwind(payload),
-        
-//     }
-// }
-pub fn interpret_new(&mut self, lox_obj:&mut lox::Lox){
+pub fn interpret_new(&mut self, lox_obj:&mut lox::Lox)-> Result<(), Exit>{
     
-    let res = loxfunction::catch_unwind_silent(AssertUnwindSafe(|| {
+   
         match &mut lox_obj.allstatements {
             Some(x)=>{
                 for statement in x.iter_mut(){
-                    self.execute(&statement);
+                   self.execute(&statement)?;
+                   
                 }
             }
             _=>{}
         }
-       
-    }));
-    match res {
-        Ok(_x)=>{
-            return
-        } 
-        Err(payload)if payload.is::<RuntimeError>()=>{
-            println!("Runtime Error");
-            lox_obj.runtimeerror(*payload.downcast().expect("The value must be of type RuntimeError"));
-        },
-        Err(payload) => std::panic::resume_unwind(payload),
         
-    }
+            Ok(())
+        
+   
 }
-fn execute(&mut self,stm:&stmt::Stmt){
+fn execute(&mut self,stm:&stmt::Stmt)->Result<(), Exit>{
     
     return stm.accept(self);
 }
@@ -152,98 +136,97 @@ fn stringify(&mut self,value:token::Literals)->String{
     }
 }
 
-pub fn execute_block(&mut self,statements:& Vec< stmt::Stmt>,environment: environment::Environment,){
+pub fn execute_block(&mut self,statements:& Vec< stmt::Stmt>,environment: environment::Environment,)-> Result<(), Exit> {
     let previous = Rc::clone(&self.environment);
-    let res = loxfunction::catch_unwind_silent(AssertUnwindSafe(|| {     
-        self.environment = Rc::new(RefCell::new(environment));           
-        for statement in statements{
-            self.execute(statement);
-        }
-    }));   
+    self.environment = Rc::new(RefCell::new(environment)); 
    
-    match res {
-        Ok(_x)=>{            
-            self.environment = previous;
-        } 
-        Err(payload) => {
-            self.environment = previous;
-            std::panic::resume_unwind(payload)},
-        
-    }
+    let result = statements.iter().try_for_each(|stat| self.execute(stat));
+
+    self.environment = previous;
+    result
+
+    
     
 }
 
 }
 
-impl stmt::StmtVisitor<()> for Interpreter{
+impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
 
-    fn visit_return_stmt(&mut self, visitor: &stmt::Return) -> () {
+    fn visit_return_stmt(&mut self, visitor: &stmt::Return) -> Result<(),Exit> {
         let mut value:token::Literals=token::Literals::Nil;
         if visitor.value!=None{
-            value=self.evaluate(visitor.value.as_ref().unwrap());
+            value=self.evaluate(visitor.value.as_ref().unwrap())?;
         }
-        std::panic::panic_any(ReturnVal{value:value});
+        return Err(Exit::Return(ReturnVal{value:value}));
 
     }
 
-    fn visit_function_stmt(&mut self, visitor: &stmt::Function) -> () {
-        let function= loxfunction::LoxFunction::new(visitor.clone());
+    fn visit_function_stmt(&mut self, visitor: &stmt::Function) -> Result<(),Exit> {
+        let function= loxfunction::LoxFunction::new(visitor.clone(),Rc::clone(&self.environment),);
         self.environment.borrow_mut().define(visitor.name.lexeme.clone(),
                                 token::Literals::Callable(loxcallable::Callable::Function(function)),);
+        Ok(())
     }
 
-    fn visit_while_stmt(&mut self, stm: &stmt::While) -> () {
+    fn visit_while_stmt(&mut self, stm: &stmt::While) -> Result<(),Exit> {
         let mut res =self.evaluate(&stm.condition);       
         
-        while self.is_truthy(res) {
-            self.execute(&*stm.body);
+        while self.is_truthy(res?) {
+            self.execute(&*stm.body)?;
             res=self.evaluate(&stm.condition);
         }
+        Ok(())
     }
-    fn visit_expression_stmt(&mut self, stm: &stmt::Expression) -> () {
-        self.evaluate(&stm.expression);
+    fn visit_expression_stmt(&mut self, stm: &stmt::Expression) -> Result<(),Exit> {
+        self.evaluate(&stm.expression)?;
+        Ok(())
     }
-    fn visit_if_stmt(&mut self, stm: &stmt::If) -> () {
+    fn visit_if_stmt(&mut self, stm: &stmt::If) -> Result<(),Exit>{
         let res=self.evaluate(&stm.condition);
-        if self.is_truthy(res){
-            self.execute(&stm.then_branch);
+        if self.is_truthy(res?){
+            self.execute(&stm.then_branch)?;
         }
         match &*stm.else_branch {
             Some(x)=>{
-                self.execute(x);
+                self.execute(x)?;
             },
             _=>{}
         }
+        Ok(())
     }
-    fn visit_print_stmt(&mut self, stm: &stmt::Print) -> () {
+    fn visit_print_stmt(&mut self, stm: &stmt::Print) -> Result<(),Exit> {
         
         let value=self.evaluate(&stm.expression);
-        println!("{}",self.stringify(value));
+        println!("{}",self.stringify(value?));
+        Ok(())
     }
 
-    fn visit_var_stmt(&mut self, stm: &stmt::Var) -> () {
+    fn visit_var_stmt(&mut self, stm: &stmt::Var) -> Result<(),Exit>{
         let mut value =token::Literals::Nil;
         if stm.initializer!=expr::Expr::Literal(expr::Literal{value:token::Literals::Nil}){
-            value=self.evaluate(&stm.initializer);
+            value=self.evaluate(&stm.initializer)?;
         }
         self.environment.borrow_mut().define(stm.name.lexeme.clone(), value);
+        Ok(())
     }
 
-    fn visit_block_stmt(&mut self, visitor: &stmt::Block) -> () {
+    fn visit_block_stmt(&mut self, visitor: &stmt::Block) -> Result<(),Exit> {
         
-        self.execute_block(&visitor.statements,environment::Environment::new_env(self.environment.clone()));
+        self.execute_block(&visitor.statements,environment::Environment::new_env(self.environment.clone()))?;
+        Ok(())
     }
 
 }
 
 
-impl expr::AstVisitor<token::Literals> for Interpreter{
+impl expr::AstVisitor<Result<token::Literals,Exit>> for Interpreter{
 
-    fn visit_call(&mut self, visitor: &expr::Call) -> token::Literals {
-        let callee=self.evaluate(&visitor.callee);
+    fn visit_call(&mut self, visitor: &expr::Call) -> Result<token::Literals,Exit> {
+        let callee=self.evaluate(&visitor.callee)?;
         let mut arguments:Vec<token::Literals>=Vec::new();
         for arg in visitor.arguments.iter(){
-            arguments.push(self.evaluate(arg));
+            arguments.push(self.evaluate(arg)?);
         }
        
                  
@@ -254,75 +237,77 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                 return function.call(self,&arguments);
             }
             else{
-                std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),
+                return Err(Exit::RuntimeErr(RuntimeError{tok:visitor.paren.clone(),
                     mess:"Expected ".to_string()+&function.arity().to_string()+&" arguments but got ".to_string()+
-                &arguments.len().to_string()+&".".to_string()});
+                &arguments.len().to_string()+&".".to_string()}));
+               
             }
         }
-        std::panic::panic_any(RuntimeError{tok:visitor.paren.clone(),mess:"Can only call functions and classes.".to_string()}); 
+        return Err(Exit::RuntimeErr(RuntimeError{tok:visitor.paren.clone(),mess:"Can only call functions and classes.".to_string()}));
+        
        
     }
 
-    fn visit_logical(&mut self, visitor: &expr::Logical) -> token::Literals {
-        let left=self.evaluate(&visitor.left);
+    fn visit_logical(&mut self, visitor: &expr::Logical) -> Result<token::Literals,Exit> {
+        let left=self.evaluate(&visitor.left)?;
         if visitor.operator.token_type==token::TokenType::Or{
-            if self.is_truthy(left.clone()) {return left;}
+            if self.is_truthy(left.clone()) {return Ok(left);}
         }
         else{
             if !self.is_truthy(left.clone()){
-                return left;
+                return Ok(left);
             }
          }
         
         return self.evaluate(&visitor.right);
     }
 
-    fn visit_literal(&mut self, visitor: &expr::Literal) -> token::Literals{
-        return visitor.value.clone()
+    fn visit_literal(&mut self, visitor: &expr::Literal) -> Result<token::Literals,Exit> {
+        return Ok(visitor.value.clone())
     }
-    fn visit_grouping(&mut self, visitor: &expr::Grouping) -> token::Literals{
+    fn visit_grouping(&mut self, visitor: &expr::Grouping) -> Result<token::Literals,Exit> {
         return self.evaluate(&*visitor.expression)
     }
-    fn visit_unary(&mut self, visitor: &expr::Unary) -> token::Literals{
-        let right:token::Literals=self.evaluate(&visitor.right);
+    fn visit_unary(&mut self, visitor: &expr::Unary) -> Result<token::Literals,Exit> {
+        let right:token::Literals=self.evaluate(&visitor.right)?;
        match visitor.operator.token_type  {
         token::TokenType::Bang => {
             
             if !self.is_truthy(right){
-                return token::Literals::BooleanLit{boolval:true} ;
+                return Ok(token::Literals::BooleanLit{boolval:true}) ;
             }else{
-                return token::Literals::BooleanLit{boolval:false};
+                return Ok(token::Literals::BooleanLit{boolval:false});
             }
         }
         token::TokenType::Minus=>{
 
-        self.check_number_operands(visitor.operator.clone(),right.clone());
+        self.check_number_operands(visitor.operator.clone(),right.clone())?;
            if let token::Literals::NumLit { numval } = right {
-               return token::Literals::NumLit { numval: -numval };  
+               return Ok(token::Literals::NumLit { numval: -numval });  
            }
            else {
             self.error_exit();
            }                  
         }
         _=>{
-            return token::Literals::Nil;
+            return Ok(token::Literals::Nil);
         }
            
        } 
       
     }
     
-    fn visit_binary(&mut self, visitor: &expr::Binary) -> token::Literals{
+    fn visit_binary(&mut self, visitor: &expr::Binary) -> Result<token::Literals,Exit> {
        
-        let right:token::Literals=self.evaluate(&visitor.right);
-        let left:token::Literals=self.evaluate(&visitor.left);
+        let right:token::Literals=self.evaluate(&visitor.right)?;
+        let left:token::Literals=self.evaluate(&visitor.left)?;
         
         match visitor.operator.token_type {
             token::TokenType::Minus=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                    if let token::Literals::NumLit { numval:y }=right{
-                        return token::Literals::NumLit { numval: x-y };  
+                        return Ok(token::Literals::NumLit { numval: x-y });  
                     }
                     else {
                         self.error_exit();
@@ -334,10 +319,10 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                 
             },
             token::TokenType::Slash=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                     if let token::Literals::NumLit { numval:y }=right{
-                         return token::Literals::NumLit { numval: x/y };  
+                         return Ok(token::Literals::NumLit { numval: x/y });  
                      }
                      else {
                         self.error_exit();
@@ -350,10 +335,10 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
              },             
             
             token::TokenType::Star=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                     if let token::Literals::NumLit { numval:y }=right{
-                         return token::Literals::NumLit { numval: x*y };  
+                         return Ok(token::Literals::NumLit { numval: x*y });  
                      }else {
                         self.error_exit();
                         }
@@ -365,27 +350,35 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                 
                 if let token::Literals::NumLit { numval:x }=left{
                     if let token::Literals::NumLit { numval:y }=right{
-                         return token::Literals::NumLit { numval: x+y };  
+                         return Ok(token::Literals::NumLit { numval: x+y });  
                      }else {
-                        std::panic::panic_any(RuntimeError{tok:visitor.operator.clone(),mess:"Operand must be two numbers or two strings".to_string()});
+                        return Err(Exit::RuntimeErr(
+                            RuntimeError{tok:visitor.operator.clone(),mess:"Operand must be two numbers or two strings".to_string()}));
+                        
                         }
                  }else if let token::Literals::StringLit { stringval:x }=left{
                         if let token::Literals::StringLit { stringval:y }=right{
-                            return token::Literals::StringLit { stringval: x+&y};
+                            return Ok(token::Literals::StringLit { stringval: x+&y});
                         }else {
-                            std::panic::panic_any(RuntimeError{tok:visitor.operator.clone(),mess:"Operand must be two numbers or two strings".to_string()});
+                            return Err(Exit::RuntimeErr(
+                                RuntimeError{tok:visitor.operator.clone(),mess:"Operand must be two numbers or two strings".to_string()})
+                            );
+                            
                            }
                     }else {
-                        std::panic::panic_any(RuntimeError{tok:visitor.operator.clone(),mess:"Operand must be two numbers or two strings".to_string()});
+                        return Err(Exit::RuntimeErr(
+                            RuntimeError{tok:visitor.operator.clone(),mess:"Operand must be two numbers or two strings".to_string()})
+                        );
+                        
                        }
                 
                 
             },
             token::TokenType::Greater=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                     if let token::Literals::NumLit { numval:y }=right{
-                         return token::Literals::BooleanLit { boolval: (x>y) } ;  
+                         return Ok(token::Literals::BooleanLit { boolval: (x>y) }) ;  
                      }else {
                         self.error_exit();
                         }
@@ -394,10 +387,10 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                    }
             }
             token::TokenType::GreaterEqual=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                 if let token::Literals::NumLit { numval:y }=right{
-                     return token::Literals::BooleanLit { boolval: (x>=y) } ;  
+                     return Ok(token::Literals::BooleanLit { boolval: (x>=y) }) ;  
                  }else {
                     self.error_exit();
                     }
@@ -405,10 +398,10 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                 self.error_exit();
                }}
             token::TokenType::Lesser=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                 if let token::Literals::NumLit { numval:y }=right{
-                     return token::Literals::BooleanLit { boolval: (x<y) } ;  
+                     return Ok(token::Literals::BooleanLit { boolval: (x<y) }) ;  
                  }else {
                     self.error_exit();
                     }
@@ -416,34 +409,34 @@ impl expr::AstVisitor<token::Literals> for Interpreter{
                 self.error_exit();
                }}
             token::TokenType::LesserEqual=>{
-                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone());
+                self.check_number_operands_(visitor.operator.clone(),left.clone(),right.clone())?;
                 if let token::Literals::NumLit { numval:x }=left{
                 if let token::Literals::NumLit { numval:y }=right{
-                     return token::Literals::BooleanLit { boolval: (x<=y) } ;  
+                     return Ok(token::Literals::BooleanLit { boolval: (x<=y) }) ;  
                  }else {
                     self.error_exit();
                     }
              }else {
                 self.error_exit();
                }}
-            token::TokenType::BangEqual=>{ return token::Literals::BooleanLit { boolval: !self.is_equal(&left, &right) }}
-            token::TokenType::EqualEqual=>{return token::Literals::BooleanLit { boolval: self.is_equal(&left, &right) }}
+            token::TokenType::BangEqual=>{ return Ok(token::Literals::BooleanLit { boolval: !self.is_equal(&left, &right) })}
+            token::TokenType::EqualEqual=>{return Ok(token::Literals::BooleanLit { boolval: self.is_equal(&left, &right) })}
             _=>{
-                return token::Literals::Nil;
+                return Ok(token::Literals::Nil);
             }
         }
 
     }
-    fn visit_variable(&mut self, visitor: &expr::Variable) -> token::Literals {
+    fn visit_variable(&mut self, visitor: &expr::Variable) -> Result<token::Literals,Exit>  {
         self.environment.borrow_mut().get(&visitor.name)
         
     }
 
-    fn visit_assign(&mut self, visitor: &expr::Assign) -> token::Literals {
+    fn visit_assign(&mut self, visitor: &expr::Assign) ->Result<token::Literals,Exit> {
         
-        let value = self.evaluate(&visitor.value);
-        self.environment.borrow_mut().assign(&visitor.name,value.clone());
-        return value;
+        let value = self.evaluate(&visitor.value)?;
+        self.environment.borrow_mut().assign(&visitor.name,value.clone())?;
+        return Ok(value);
     }
     
 }            

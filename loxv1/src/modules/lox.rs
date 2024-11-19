@@ -1,11 +1,10 @@
 use std::io::{self,Write,Read};
 use std::path::Path;
 use std::fs::File;
-use crate::modules::lexer;
-use crate::modules::token;
 // use crate::modules::astprinter;
 use crate::modules::interpreter;
-use super::{parser,stmt};
+
+use super::{parser,stmt,lexer,token};
 
 pub struct Lox{
    pub had_error:bool,
@@ -66,22 +65,22 @@ impl Lox {
         for i in scanner.tokens.iter(){
             
             match  &i.literal{
-                Some(token::Literals::NumLit{numval})=> { 
+                token::Literals::NumLit{numval}=> { 
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,numval)
                 },
-                Some(token::Literals::StringLit{stringval})=> { 
+                token::Literals::StringLit{stringval}=> { 
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,stringval)
                 },
-                Some(token::Literals::BooleanLit{boolval})=> { 
+                token::Literals::BooleanLit{boolval}=> { 
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,boolval)
                 },
-                Some(token::Literals::Nil)=>{
+                token::Literals::Nil=>{
                     println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NULL or NIL TYPE")
                 },
-                Some(token::Literals::Callable(x))=>{
+                token::Literals::Callable(x)=>{
                     println!("{} {} {} {} {}",i.lexeme,i.line,i.token_type,"Function Type : {}",x);
                 },
-                None=> println!("{} {} {} {}",i.lexeme,i.line,i.token_type,"NONE"),
+                
             }
            
         }    
@@ -105,15 +104,18 @@ impl Lox {
        
         let mut interpreter=interpreter::Interpreter::new();
         match &mut self.allstatements {
-            // Some(x)=>{
-            //     x.append(&mut statements);
-            //     }
-            // None=>{
-            //  self.allstatements=Some(statements);
-            // }  
-            _=>{self.allstatements=Some(statements);}          
+            
+            _=>{self.allstatements=Some(statements.unwrap());}          
         }
-        interpreter.interpret_new(self);
+        let res=interpreter.interpret_new(self);
+        match res {
+            Ok(())=>{},
+            Err(e)=>{
+                if let interpreter::Exit::RuntimeErr(interpreter::RuntimeError{tok,mess}) =e  {
+                    self.errorp(tok, mess);
+                }
+            }
+        }
     
     
     }
@@ -139,11 +141,11 @@ pub fn errorp(&mut self,tok:token::Token,message:String){
 
 }
 
-pub fn runtimeerror(&mut self,err:interpreter::RuntimeError){
+// pub fn runtimeerror(&mut self,err:interpreter::RuntimeError){
 
-    println!("{}\n[line {} ]",err.mess,err.tok.line);
-    self.had_runtime_error=true;
-}
+//     println!("{}\n[line {} ]",err.mess,err.tok.line);
+//     self.had_runtime_error=true;
+// }
 
   
     

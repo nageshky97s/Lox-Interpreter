@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use super::{token,interpreter};
+use super::{interpreter::{self, RuntimeError}, token};
 
 #[derive(Debug, Clone, Default)]
 pub struct Environment {
@@ -26,26 +26,30 @@ pub fn define(&mut self, name: String, value: token::Literals) {
     self.values.insert(name, value);
 }
 
-pub fn get(&self, name: &token::Token) ->token::Literals {
+pub fn get(&self, name: &token::Token) ->Result<token::Literals,interpreter::Exit> {
     if self.values.contains_key(&name.lexeme) {
-       return self.values.get(&name.lexeme).unwrap().clone()
+       return Ok(self.values.get(&name.lexeme).unwrap().clone());
         } else if self.enclosing.is_some() {
            return self.enclosing.as_ref().unwrap().borrow().get(name)
         } else {
-            std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()});
+            return Err(interpreter::Exit::RuntimeErr(RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()}));
+           
     }
 }
 
-pub fn assign(&mut self, name: &token::Token, value: token::Literals){
+pub fn assign(&mut self, name: &token::Token, value: token::Literals)->Result<(),interpreter::Exit>{
     if self.values.contains_key(&name.lexeme) {
         self.values.insert(name.lexeme.clone(), value);
+        return Ok(());
         
         } 
     else if let Some(enclosing) = &self.enclosing {
-        enclosing.borrow_mut().assign(name, value);
+        enclosing.borrow_mut().assign(name, value)?;
+        return Ok(());
         
     } else {
-        std::panic::panic_any(interpreter::RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()});
+        return Err(interpreter::Exit::RuntimeErr(RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()}));
+        
         }
     }
 }

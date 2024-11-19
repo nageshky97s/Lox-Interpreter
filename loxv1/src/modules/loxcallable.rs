@@ -7,7 +7,7 @@ pub enum Callable{
 pub trait LoxCallable{
      fn call( &self,
         interpreter: &mut interpreter::Interpreter,
-        arguments: &[token::Literals],)->token::Literals;
+        arguments: &[token::Literals],)->Result<token::Literals,interpreter::Exit>;
    fn arity(&self)->usize;
 }
 impl fmt::Debug for Callable {

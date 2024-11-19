@@ -47,7 +47,7 @@ impl Scanner {
             self.start=self.current;
             self.scan_token(loxobj);
         }
-       self.tokens.push(token::Token{token_type:token::TokenType::Eof,lexeme:String::new(),literal:None,line:self.line});
+       self.tokens.push(token::Token{token_type:token::TokenType::Eof,lexeme:String::new(),literal:token::Literals::Nil,line:self.line});
         
     }
 
@@ -107,9 +107,9 @@ impl Scanner {
         self.source.chars().nth(self.current-1).unwrap()
     }
     fn add_token(&mut self,token_type:token::TokenType,){
-        self.add_token_(token_type,None)
+        self.add_token_(token_type,token::Literals::Nil)
     }
-    fn add_token_(&mut self,token_type_:token::TokenType,literal_ :Option<token::Literals>){
+    fn add_token_(&mut self,token_type_:token::TokenType,literal_ :token::Literals){
 
         self.tokens.push(token::Token{token_type:token_type_,
             lexeme:self.source.chars().skip(self.start).take(self.current-self.start).collect::<String>(),
@@ -141,7 +141,7 @@ impl Scanner {
         self.advance();
 
         self.add_token_(token::TokenType::String,
-            Some(token::Literals::StringLit{stringval:self.source.chars().skip(self.start+1).take(self.current-self.start-2).collect::<String>()}));
+            token::Literals::StringLit{stringval:self.source.chars().skip(self.start+1).take(self.current-self.start-2).collect::<String>()});
         
     }
 
@@ -157,7 +157,7 @@ impl Scanner {
        
         
         self.add_token_(token::TokenType::Number,
-            Some(token::Literals::NumLit{numval:(self.source.chars().skip(self.start).take(self.current-self.start).collect::<String>()).parse::<f64>().unwrap()}));
+            token::Literals::NumLit{numval:(self.source.chars().skip(self.start).take(self.current-self.start).collect::<String>()).parse::<f64>().unwrap()});
          
     }
     fn peek_next(&mut self)->char {
@@ -176,12 +176,12 @@ impl Scanner {
         match tokentype {
                 Some(x) =>{
                     if let token::TokenType::Nil=x{
-                        self.add_token_(token::TokenType::Nil, Some(token::Literals::Nil));
+                        self.add_token_(token::TokenType::Nil, token::Literals::Nil);
                     }else if let token::TokenType::True=x{
-                        self.add_token_(token::TokenType::True, Some(token::Literals::BooleanLit { boolval: true }));
+                        self.add_token_(token::TokenType::True, token::Literals::BooleanLit { boolval: true });
                     }
                     else if let token::TokenType::False=x{
-                        self.add_token_(token::TokenType::False, Some(token::Literals::BooleanLit { boolval: false }));
+                        self.add_token_(token::TokenType::False, token::Literals::BooleanLit { boolval: false });
                     }
                     else{
                         self.add_token(*x);
