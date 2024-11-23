@@ -1,8 +1,9 @@
-use super::{interpreter, loxfunction::LoxFunction, token};
+use super::{interpreter, loxclass::LoxClass, loxfunction::LoxFunction, token};
 use std::fmt;
 
 pub enum Callable{
     Function(LoxFunction),
+    Class(LoxClass),
 }
 pub trait LoxCallable{
      fn call( &self,
@@ -18,7 +19,8 @@ impl fmt::Debug for Callable {
 impl fmt::Display for Callable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Function(_x)=>write!(f,"Function - Callable"),
+            Self::Function(x)=>write!(f,"Function {} - Callable",x.declaration.name.lexeme),
+            Self::Class(x)=>write!(f,"Class {} - Callable",x.name),
         }
     }
 }
@@ -27,7 +29,7 @@ impl Clone for Callable {
     fn clone(&self) -> Self {
         match self {
             Callable::Function(lox_function) => Callable::Function(lox_function.clone()),
-            // Callable::Class(class) => Callable::Class(class.clone()),
+            Callable::Class(class) => Callable::Class(class.clone()),
             // Callable::Instance(ins) => Callable::Instance(ins.clone()),
         }
     }

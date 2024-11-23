@@ -3,7 +3,14 @@ use crate::modules::token;
 use crate::modules::lox;
 use crate::modules::stmt;
 
+static mut UUID: usize = 0;
 
+pub fn uuid_next() -> usize {
+    unsafe {
+        UUID += 1;
+        UUID
+    }
+}
 
 
 pub struct Parser{
@@ -28,7 +35,7 @@ impl Parser {
             let value=self.assignment(lox_obj)?;
             if let expr::Expr::Variable(name)= exp {
                 let name_=name.name.clone();
-                return Ok(expr::Expr::Assign(expr::Assign{name:name_,value:Box::new(value)}))
+                return Ok(expr::Expr::Assign(expr::Assign{name:name_,value:Box::new(value),uuid:uuid_next()}))
             }else{
                 self.error(equals, "Invalid assignment target.".to_string(), lox_obj);
                 return Err(ParseError);
@@ -42,7 +49,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::Or]) {
             let operator =self.previous();
             let right = self.and(lox_obj)?;
-            exp = expr::Expr::Logical(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)});
+            exp = expr::Expr::Logical(expr::Logical{uuid:uuid_next(),left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         Ok(exp)
     }
@@ -51,7 +58,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::And]) {
             let operator =self.previous();
             let right = self.equality(lox_obj)?;
-            exp=expr::Expr::Logical(expr::Logical{left:Box::new(exp),operator:operator,right:Box::new(right)});
+            exp=expr::Expr::Logical(expr::Logical{uuid:uuid_next(),left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
        Ok(exp)
 
@@ -61,7 +68,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::BangEqual,token::TokenType::EqualEqual]){
             let  operator:token::Token = self.previous();
             let  right:expr::Expr=self.comparison(lox_obj)?;
-            exp=expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
+            exp=expr::Expr::Binary(expr::Binary{uuid:uuid_next(),left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         Ok(exp)
 
@@ -75,7 +82,7 @@ impl Parser {
             {
                 let  operator:token::Token=self.previous();
                 let  right:expr::Expr=self.term(lox_obj)?;
-                exp= expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
+                exp= expr::Expr::Binary(expr::Binary{uuid:uuid_next(),left:Box::new(exp),operator:operator,right:Box::new(right)});
             }
             Ok(exp)
     }
@@ -84,7 +91,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::Minus,token::TokenType::Plus]){
             let  operator =self.previous();
             let  right:expr::Expr=self.factor(lox_obj)?;
-            exp= expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
+            exp= expr::Expr::Binary(expr::Binary{uuid:uuid_next(),left:Box::new(exp),operator:operator,right:Box::new(right)});
         }
         Ok(exp)
 
@@ -94,7 +101,7 @@ impl Parser {
         while self.match_(vec![token::TokenType::Slash,token::TokenType::Star]) {
             let  operator =self.previous();
             let  right:expr::Expr=self.unary(lox_obj)?;
-            exp= expr::Expr::Binary(expr::Binary{left:Box::new(exp),operator:operator,right:Box::new(right)});
+            exp= expr::Expr::Binary(expr::Binary{uuid:uuid_next(),left:Box::new(exp),operator:operator,right:Box::new(right)});
             
         }
         Ok(exp)
@@ -104,7 +111,7 @@ impl Parser {
         if self.match_(vec![token::TokenType::Bang,token::TokenType::Minus]){
             let operator =self.previous();
             let right:expr::Expr=self.unary(lox_obj)?;
-            return Ok(expr::Expr::Unary(expr::Unary{operator:operator,right:Box::new(right)}));
+            return Ok(expr::Expr::Unary(expr::Unary{uuid:uuid_next(),operator:operator,right:Box::new(right)}));
         }
 
         return self.call(lox_obj);
@@ -139,29 +146,29 @@ impl Parser {
             }
         }
         let paren=self.consume(token::TokenType::RightParen, "Expect ')' after arguments.".to_string(), lox_obj)?;
-        return Ok(expr::Expr::Call(expr::Call { callee: Box::new(callee), paren: paren, arguments: arguments }));
+        return Ok(expr::Expr::Call(expr::Call { uuid:uuid_next(),callee: Box::new(callee), paren: paren, arguments: arguments }));
 
     }
 
     fn primary(&mut self,lox_obj:&mut lox::Lox) ->Result<expr::Expr,ParseError>{
         
         if self.match_(vec![token::TokenType::False]){
-        return Ok(expr::Expr::Literal(expr::Literal{value:token::Literals::BooleanLit { boolval: false }})); }
+        return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:token::Literals::BooleanLit { boolval: false }})); }
         else if self.match_(vec![token::TokenType::True]){
-        return Ok(expr::Expr::Literal(expr::Literal{value:token::Literals::BooleanLit { boolval: true }})); }
+        return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:token::Literals::BooleanLit { boolval: true }})); }
         else if self.match_(vec![token::TokenType::Nil]){
-        return Ok(expr::Expr::Literal(expr::Literal{value:token::Literals::Nil})); }
+        return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:token::Literals::Nil})); }
         else if self.match_(vec![token::TokenType::Number,token::TokenType::String]){
-            return Ok(expr::Expr::Literal(expr::Literal{value:self.previous().literal}));
+            return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:self.previous().literal}));
                    
         }
         else if self.match_(vec![token::TokenType::Identifier]){
-            return Ok(expr::Expr::Variable(expr::Variable { name: self.previous() }))
+            return Ok(expr::Expr::Variable(expr::Variable { uuid:uuid_next(),name: self.previous() }))
         }
         else if self.match_(vec![token::TokenType::LeftParen]){
             let  exp:expr::Expr =self.expression(lox_obj)? ;
             self.consume(token::TokenType::RightParen, "Expect ')' after expression".to_string(),lox_obj)?;
-            return Ok(expr::Expr::Grouping(expr::Grouping{expression:Box::new(exp)}));      
+            return Ok(expr::Expr::Grouping(expr::Grouping{uuid:uuid_next(),expression:Box::new(exp)}));      
         
         }
         else{
@@ -271,7 +278,10 @@ impl Parser {
   }
   fn declaration(&mut self,lox_obj:&mut lox::Lox)->Result<stmt::Stmt,ParseError>{
 
-       let p = if self.match_(vec![token::TokenType::Fun]){
+       let p =  if self.match_(vec![token::TokenType::Class]){
+             self.class_decalration(lox_obj)
+       }
+        else if self.match_(vec![token::TokenType::Fun]){
              self.function("function".to_string(),lox_obj)
         }
         else if self.match_(vec![token::TokenType::Var]){
@@ -290,6 +300,19 @@ impl Parser {
             
         }
     
+  }
+
+  fn class_decalration(&mut self,lox_obj:&mut lox::Lox)->Result<stmt::Stmt,ParseError>{
+    let name = self.consume(token::TokenType::Identifier, "Expect class name.".to_string(), lox_obj)?;
+    self.consume(token::TokenType::LeftBrace, "Expect '{' before class body.".to_string(), lox_obj)?;
+
+    let mut methods:Vec<stmt::Stmt>=Vec::new();
+    while !self.check(token::TokenType::RightBrace) && !self.is_at_end(){
+        methods.push(self.function("method".to_string(), lox_obj)?);
+    }
+    self.consume(token::TokenType::RightBrace, "Expect '}' after class body.".to_string(), lox_obj)?;
+    Ok(stmt::Stmt::Class(stmt::Class { name: name, methods: methods }))
+
   }
 
   fn function(&mut self,kind:String,lox_obj:&mut lox::Lox)->Result<stmt::Stmt,ParseError>{
@@ -317,7 +340,7 @@ impl Parser {
 
   fn var_declaration(&mut self,lox_obj:&mut lox::Lox)->Result<stmt::Stmt,ParseError>{
     let name:token::Token=self.consume(token::TokenType::Identifier, "Expect variable name.".to_string(), lox_obj)?;
-    let mut initializer=expr::Expr::Literal(expr::Literal{value:token::Literals::Nil});
+    let mut initializer=expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:token::Literals::Nil});
     if self.match_(vec![token::TokenType::Equal]){
         initializer=self.expression(lox_obj)?;
     }
@@ -390,7 +413,7 @@ fn for_statement(&mut self,lox_obj:&mut lox::Lox)->Result<stmt::Stmt,ParseError>
     }
 
     if condition==None{
-        condition=Some(expr::Expr::Literal(expr::Literal { value: token::Literals::BooleanLit { boolval: true } }));
+        condition=Some(expr::Expr::Literal(expr::Literal { uuid:uuid_next(),value: token::Literals::BooleanLit { boolval: true } }));
     }
     body=Ok(stmt::Stmt::While(stmt::While { condition: condition.unwrap(), body: Box::new(body?) }));
 

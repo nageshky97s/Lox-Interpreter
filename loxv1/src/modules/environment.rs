@@ -37,6 +37,18 @@ pub fn get(&self, name: &token::Token) ->Result<token::Literals,interpreter::Exi
     }
 }
 
+pub fn get_at(&self,distance:usize,name: &token::Token)->Result<token::Literals,interpreter::Exit>{
+    if distance  == 0 {
+        self.get(&name)
+    } else {
+        self.enclosing
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .get_at(distance - 1, name)
+    }
+}
+
 pub fn assign(&mut self, name: &token::Token, value: token::Literals)->Result<(),interpreter::Exit>{
     if self.values.contains_key(&name.lexeme) {
         self.values.insert(name.lexeme.clone(), value);
@@ -50,6 +62,17 @@ pub fn assign(&mut self, name: &token::Token, value: token::Literals)->Result<()
     } else {
         return Err(interpreter::Exit::RuntimeErr(RuntimeError{tok:name.clone(),mess:"Undefined variable ".to_string()+&name.lexeme+&" .".to_string()}));
         
+        }
+    }
+    pub fn assign_at(&mut self, distance: usize, name: token::Token, value: token::Literals) {
+        if distance == 0 {
+            self.define(name.lexeme, value);
+        } else {
+            self.enclosing
+                .as_ref()
+                .unwrap()
+                .borrow_mut()
+                .assign_at(distance - 1, name, value);
         }
     }
 }

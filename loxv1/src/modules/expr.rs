@@ -1,6 +1,8 @@
+use std::hash::Hash;
+
 use crate::modules::token;
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug,Clone)]
 pub enum Expr {
     //Empty,
     Binary(Binary),
@@ -17,6 +19,7 @@ pub type ExprBox = Box<Expr>;
 #[derive(Debug,PartialEq,Clone)]
 
 pub struct Call{
+    pub uuid: usize,
     pub callee:ExprBox,
     pub paren:token::Token,
     pub arguments:Vec<ExprBox>,
@@ -26,6 +29,7 @@ pub struct Call{
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Logical{
+    pub uuid: usize,
     pub left:ExprBox,
     pub operator:token::Token,
     pub right:ExprBox,
@@ -35,6 +39,7 @@ pub struct Logical{
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Assign{
+    pub uuid: usize,
     pub name: token::Token,
     pub value:ExprBox,
 }
@@ -42,25 +47,30 @@ pub struct Assign{
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct Binary {
+    pub uuid: usize,
     pub left: ExprBox,
     pub operator: token::Token,
     pub right: ExprBox,
 }
 #[derive(Debug,PartialEq,Clone)]
 pub struct Grouping {
+    pub uuid: usize,
     pub expression: ExprBox,
 }
 #[derive(Debug,Clone,PartialEq)]
 pub struct Literal {
+    pub uuid: usize,
     pub value: token::Literals,
 }
 #[derive(Debug,PartialEq,Clone)]
 pub struct Unary {
+    pub uuid: usize,
     pub operator: token::Token,
     pub right: ExprBox,
 }
 #[derive(Debug,Clone,PartialEq)]
 pub struct Variable{
+    pub uuid: usize,
     pub name:token::Token,
 }
 
@@ -93,6 +103,25 @@ impl<R> Accept<R> for Expr {
             Expr::Logical(x)=>visitor.visit_logical(x),
             Expr::Call(x)=>visitor.visit_call(x),
 
+        }
+    }
+    
+}
+impl Expr {
+    fn get_uid(&self) -> usize {
+        match self {
+            Expr::Assign(e) => e.uuid,
+            Expr::Binary(e) => e.uuid,
+            Expr::Grouping(e) => e.uuid,
+            Expr::Literal(e) => e.uuid,
+            Expr::Logical(e) => e.uuid,
+            Expr::Unary(e) => e.uuid,
+            Expr::Variable(e) => e.uuid,
+            Expr::Call(e) => e.uuid,
+            // Expr::Get(e) => e.uuid,
+            // Expr::Set(e) => e.uuid,
+            // Expr::This(e) => e.uuid,
+            // Expr::Super(e) => e.uuid,
         }
     }
 }
@@ -135,5 +164,20 @@ impl<R> Accept<R> for Unary {
 impl<R> Accept<R> for Variable {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_variable(self)
+    }
+}
+
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_uid() == other.get_uid()
+    }
+}
+
+impl Eq for Expr {}
+
+impl Hash for Expr {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // core::mem::discriminant(self).hash(state);
+        self.get_uid().hash(state);
     }
 }

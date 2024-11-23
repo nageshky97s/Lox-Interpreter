@@ -1,6 +1,7 @@
 use super::loxcallable::Callable;
-use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment,loxfunction,loxcallable,loxcallable::LoxCallable};
+use super::{expr::Accept, token,lox,expr,stmt,stmt::StmtAccept,environment,loxfunction,loxcallable,loxcallable::LoxCallable,loxclass};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 
@@ -23,6 +24,7 @@ pub struct ReturnVal{
 pub struct Interpreter{
     pub globals:Rc<RefCell<environment::Environment>>,
     pub environment: Rc<RefCell<environment::Environment>>,
+    locals:HashMap<expr::Expr,usize>,
 }
 
 impl Interpreter {
@@ -31,6 +33,7 @@ impl Interpreter {
             Interpreter {
                 globals: Rc::clone(&globals),
                 environment: Rc::clone(&globals),
+                locals:HashMap::new(),
                }
     
 }
@@ -123,6 +126,10 @@ fn execute(&mut self,stm:&stmt::Stmt)->Result<(), Exit>{
     return stm.accept(self);
 }
 
+pub fn resolve(&mut self,exp:expr::Expr,depth:usize){
+    self.locals.insert(exp.clone(),depth);
+}
+
 fn stringify(&mut self,value:token::Literals)->String{
     match value {
         token::Literals::BooleanLit { boolval }=>{return boolval.to_string() ;}
@@ -131,6 +138,7 @@ fn stringify(&mut self,value:token::Literals)->String{
         token::Literals::StringLit { stringval }=>{return stringval;}
         token::Literals::Callable(c) => match c {
            loxcallable::Callable::Function(func) => func.to_string(),
+           loxcallable::Callable::Class(class)=>class.to_string(),
             //_ => "callable".to_string(),
         },
     }
@@ -143,10 +151,17 @@ pub fn execute_block(&mut self,statements:& Vec< stmt::Stmt>,environment: enviro
     let result = statements.iter().try_for_each(|stat| self.execute(stat));
 
     self.environment = previous;
-    result
-
+    result   
     
-    
+}
+pub fn look_up_variable(&mut self,name:token::Token,exp:expr::Expr)->Result<token::Literals,Exit>{
+    let distance = self.locals.get(&exp);
+    if distance.is_some(){
+        return self.environment.borrow_mut().get_at(distance.unwrap().clone(),&name);
+    }
+    else{
+        return self.globals.borrow_mut().get(&name);
+    }
 }
 
 }
@@ -203,17 +218,30 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
     }
 
     fn visit_var_stmt(&mut self, stm: &stmt::Var) -> Result<(),Exit>{
-        let mut value =token::Literals::Nil;
-        if stm.initializer!=expr::Expr::Literal(expr::Literal{value:token::Literals::Nil}){
-            value=self.evaluate(&stm.initializer)?;
-        }
-        self.environment.borrow_mut().define(stm.name.lexeme.clone(), value);
+        let value = if let expr::Expr::Literal(expr::Literal {
+            uuid: _usize,
+            value: token::Literals::Nil,
+        }) = stm.initializer
+        {
+            token::Literals::Nil
+        } else {
+            self.evaluate(&stm.initializer)?
+        };
+        self.environment
+            .borrow_mut()
+            .define(stm.name.lexeme.clone(), value);
         Ok(())
     }
 
     fn visit_block_stmt(&mut self, visitor: &stmt::Block) -> Result<(),Exit> {
         
         self.execute_block(&visitor.statements,environment::Environment::new_env(self.environment.clone()))?;
+        Ok(())
+    }
+    fn visit_class_stmt(&mut self, visitor: &stmt::Class) -> Result<(),Exit> {
+        self.environment.borrow_mut().define(visitor.name.lexeme.clone(),token::Literals::Nil);
+        let klass=loxclass::LoxClass::new(visitor.name.lexeme.clone());
+        self.environment.borrow_mut().assign(&visitor.name, token::Literals::Callable(Callable::Class(klass)))?;
         Ok(())
     }
 
@@ -428,14 +456,21 @@ impl expr::AstVisitor<Result<token::Literals,Exit>> for Interpreter{
 
     }
     fn visit_variable(&mut self, visitor: &expr::Variable) -> Result<token::Literals,Exit>  {
-        self.environment.borrow_mut().get(&visitor.name)
+        self.look_up_variable(visitor.name.clone(),expr::Expr::Variable(visitor.clone()))
         
     }
 
     fn visit_assign(&mut self, visitor: &expr::Assign) ->Result<token::Literals,Exit> {
         
         let value = self.evaluate(&visitor.value)?;
-        self.environment.borrow_mut().assign(&visitor.name,value.clone())?;
+        let distance = self.locals.get(&expr::Expr::Assign(visitor.clone()));
+        if distance.is_some(){
+            self.environment.borrow_mut().assign_at(distance.unwrap().clone(),visitor.name.clone(),value.clone());
+        }
+        else{
+            self.environment.borrow_mut().assign(&visitor.name,value.clone())?;
+        }
+        
         return Ok(value);
     }
     

@@ -12,6 +12,13 @@ pub enum Stmt{
      While(While),
      Function(Function),
      Return(Return),
+     Class(Class),
+}
+#[derive(PartialEq,Clone)]
+pub struct Class{
+    pub name:token::Token,
+    pub methods:Vec<Stmt>,
+
 }
 #[derive(PartialEq,Clone)]
 pub struct Return{
@@ -56,6 +63,7 @@ pub trait StmtVisitor<R> {
     fn visit_while_stmt(&mut self, visitor: &While) -> R;
     fn visit_function_stmt(&mut self, visitor: &Function) -> R;
     fn visit_return_stmt(&mut self, visitor: &Return) -> R;
+    fn visit_class_stmt(&mut self, visitor: &Class) -> R;
 }
 pub trait StmtAccept<R> {
     fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R;
@@ -72,6 +80,7 @@ impl<R> StmtAccept<R> for Stmt {
             Stmt::While(x)=>visitor.visit_while_stmt(x),
             Stmt::Function(x)=>visitor.visit_function_stmt(x),
             Stmt::Return(x)=>visitor.visit_return_stmt(x),
+            Stmt::Class(x)=>visitor.visit_class_stmt(x),
         }
     }
 }
@@ -117,5 +126,12 @@ impl<R> StmtAccept<R> for Function {
 impl<R> StmtAccept<R> for Return {
     fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_return_stmt(self)
+    }
+}
+
+
+impl<R> StmtAccept<R> for Class {
+    fn accept<V: StmtVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_class_stmt(self)
     }
 }

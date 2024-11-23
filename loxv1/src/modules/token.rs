@@ -83,7 +83,7 @@ impl fmt::Display for Literals {
         Self::StringLit { stringval }=>write!(f,"{}",stringval),
         Self::BooleanLit { boolval }=>write!(f,"{}",boolval),
         Self::Nil =>write!(f,"NULL or NIL TYPE"),
-        Self::Callable (x)=>write!(f,"Function name: {}",x),
+        Self::Callable (x)=>write!(f,"Callable name: {}",x),
        }
     }
 }
