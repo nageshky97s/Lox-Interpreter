@@ -180,7 +180,7 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
     }
 
     fn visit_function_stmt(&mut self, visitor: &stmt::Function) -> Result<(),Exit> {
-        let function= loxfunction::LoxFunction::new(visitor.clone(),Rc::clone(&self.environment),);
+        let function= loxfunction::LoxFunction::new(visitor.clone(),Rc::clone(&self.environment),false);
         self.environment.borrow_mut().define(visitor.name.lexeme.clone(),
                                 token::Literals::Callable(loxcallable::Callable::Function(function)),);
         Ok(())
@@ -248,7 +248,7 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
                 let function = loxfunction::LoxFunction::new(
                     m.clone(),
                     Rc::clone(&self.environment),
-                    // m.name.lexeme.eq("init"),
+                    m.name.lexeme.eq("init"),
                 );
                 methods.insert(m.name.lexeme.clone(), function);
             }
@@ -311,7 +311,16 @@ impl expr::AstVisitor<Result<token::Literals,Exit>> for Interpreter{
                 &arguments.len().to_string()+&".".to_string()}));
                
             }
-        }
+        } else if let token::Literals::Callable(Callable::Class(class)) = callee {
+            if arguments.len() != class.arity() {
+            
+                return Err(Exit::RuntimeErr(RuntimeError{tok:visitor.paren.clone(),
+                    mess:"Expected ".to_string()+&class.arity().to_string()+&" arguments but got ".to_string()+
+                &arguments.len().to_string()+&".".to_string()}));
+            }
+
+            return class.call(self, &arguments)
+        } 
         return Err(Exit::RuntimeErr(RuntimeError{tok:visitor.paren.clone(),mess:"Can only call functions and classes.".to_string()}));
         
        

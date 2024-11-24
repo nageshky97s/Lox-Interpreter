@@ -7,13 +7,15 @@ use std::cell::RefCell;
 pub struct LoxFunction{
     pub declaration:Box<stmt::Function>,
     pub closure: Rc<RefCell<environment::Environment>>,
+    pub is_initializer: bool,
 }
 impl LoxFunction {
     pub fn new(declaration: stmt::Function,
-        closure: Rc<RefCell<environment::Environment>>,)->Self{
+        closure: Rc<RefCell<environment::Environment>>, is_initializer: bool,)->Self{
         LoxFunction {
             declaration: Box::new(declaration),
             closure:closure,
+            is_initializer:is_initializer,
         }
     }
 
@@ -27,7 +29,7 @@ impl LoxFunction {
         LoxFunction {
             declaration: self.declaration.clone(),
             closure: environment,
-            //is_initializer: self.is_initializer,
+            is_initializer: self.is_initializer,
         }
     }
 }
@@ -55,6 +57,17 @@ impl loxcallable::LoxCallable for LoxFunction {
                 }
             }
             
+        }
+        if self.is_initializer {
+            return self.closure.borrow().get_at(
+                0,
+                &token::Token {
+                    token_type: token::TokenType::This,
+                    lexeme: "this".to_string(),
+                    literal: token::Literals::Nil,
+                    line: self.declaration.name.line,
+                },
+            );
         }
         
         Ok(token::Literals::Nil)     

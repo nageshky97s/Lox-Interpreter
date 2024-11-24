@@ -7,15 +7,23 @@ use super::{expr::{self, Accept}, interpreter, lox, parser::{self, ParseError}, 
 pub enum FunctionType {
     None,
     Function,
-    // Initializer,
+    Initializer,
     Method,
 }
+#[derive(Clone, Copy, PartialEq)]
+enum ClassType {
+    None,
+    Class,
+    SubClass,
+}
+
 
 pub struct Resolver<'a>{
     pub interpreter:&'a mut interpreter::Interpreter,
     pub lox_obj:&'a mut lox::Lox,
     scopes: Vec<HashMap<String, bool>>,
     current_function: FunctionType,
+    current_class: ClassType,
 
 }
 
@@ -26,6 +34,7 @@ impl<'a> Resolver<'a> {
             lox_obj,
             scopes: Vec::new(),
             current_function: FunctionType::None,
+            current_class: ClassType::None,
         }
     }
     fn begin_scope(&mut self,){
@@ -131,6 +140,11 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
 
         }
         if visitor.value!=None{
+            if self.current_function==FunctionType::Initializer{
+                self.lox_obj.errorp(visitor.keyword.clone(), "Can't return a value from an initializer.".to_string());
+                return Err(ParseError);
+    
+            }
             self.resolve_expr(visitor.value.as_ref().unwrap());
         }
         Ok(())
@@ -142,14 +156,22 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
     }
 
     fn visit_class_stmt(&mut self, visitor: &stmt::Class) -> Result<(),parser::ParseError> {
+
+        let enclosing_class = self.current_class;
+        self.current_class = ClassType::Class;
+
         self.declare(visitor.name.clone())?;
         self.begin_scope();
         self.scopes.last_mut().unwrap().insert("this".to_string(), true);
         for method in visitor.methods.iter() 
         {
-            let declaration = FunctionType::Method;
+            
             if let Stmt::Function(m) = method {
-                               
+                let declaration =  if m.name.lexeme.eq("init") {
+                    FunctionType::Initializer
+                } else {
+                    FunctionType::Method
+                };               
                 self.resolve_function(m, declaration)?;
             }
         }
@@ -157,12 +179,18 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
         
         self.define(visitor.name.clone());
         self.endscope();
+        self.current_class = enclosing_class;
         Ok(())
     }
 }
 impl<'a> expr::AstVisitor<Result<(),parser::ParseError>> for Resolver<'a>  {
 
     fn visit_this(&mut self, visitor: &expr::This) -> Result<(),parser::ParseError> {
+
+        if self.current_class == ClassType::None{
+            self.lox_obj.errorp(visitor.keyword.clone(), "Can't use 'this' outside of a class.".to_string());
+            return Err(parser::ParseError);
+        }
         self.resolve_local(expr::Expr::This(visitor.clone()), visitor.keyword.clone());
         Ok(())
     }
