@@ -4,11 +4,11 @@ use super::{expr::{self, Accept}, interpreter, lox, parser::{self, ParseError}, 
 
 
 #[derive(Clone, Copy, PartialEq)]
-enum FunctionType {
+pub enum FunctionType {
     None,
     Function,
     // Initializer,
-    // Method,
+    Method,
 }
 
 pub struct Resolver<'a>{
@@ -72,11 +72,11 @@ impl<'a> Resolver<'a> {
             }
         }
     }
-    fn resolve_function(&mut self,function:stmt::Function,typ:FunctionType)-> Result<(),parser::ParseError>{
+    fn resolve_function(&mut self,function:&stmt::Function,typ:FunctionType)-> Result<(),parser::ParseError>{
         let enclosing_function=self.current_function;
         self.current_function=typ;
         self.begin_scope();
-        for param in function.params{
+        for param in function.params.iter(){
             self.declare(param.clone())?;
             self.define(param.clone());
         }
@@ -108,7 +108,7 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
     fn visit_function_stmt(&mut self, visitor: &stmt::Function) -> Result<(),parser::ParseError> {
         self.declare(visitor.name.clone())?;
         self.define(visitor.name.clone());
-        self.resolve_function(visitor.clone(), FunctionType::Function)?;
+        self.resolve_function(visitor, FunctionType::Function)?;
         Ok(())
     }
     fn visit_if_stmt(&mut self, visitor: &stmt::If) -> Result<(),parser::ParseError> {
@@ -143,11 +143,39 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
 
     fn visit_class_stmt(&mut self, visitor: &stmt::Class) -> Result<(),parser::ParseError> {
         self.declare(visitor.name.clone())?;
+        self.begin_scope();
+        self.scopes.last_mut().unwrap().insert("this".to_string(), true);
+        for method in visitor.methods.iter() 
+        {
+            let declaration = FunctionType::Method;
+            if let Stmt::Function(m) = method {
+                               
+                self.resolve_function(m, declaration)?;
+            }
+        }
+
+        
         self.define(visitor.name.clone());
+        self.endscope();
         Ok(())
     }
 }
 impl<'a> expr::AstVisitor<Result<(),parser::ParseError>> for Resolver<'a>  {
+
+    fn visit_this(&mut self, visitor: &expr::This) -> Result<(),parser::ParseError> {
+        self.resolve_local(expr::Expr::This(visitor.clone()), visitor.keyword.clone());
+        Ok(())
+    }
+
+    fn visit_set(&mut self, visitor: &expr::Set) -> Result<(),parser::ParseError> {
+        self.resolve_expr(&visitor.value);
+        self.resolve_expr(&visitor.object);
+        Ok(())
+    }
+    fn visit_get(&mut self, visitor: &expr::Get) -> Result<(),parser::ParseError> {
+        self.resolve_expr(&visitor.object);
+        Ok(())
+    }
     fn visit_assign(&mut self, visitor: &expr::Assign) -> Result<(),parser::ParseError> {
         self.resolve_expr(&visitor.value);
         self.resolve_local(expr::Expr::Assign(expr::Assign { uuid:visitor.uuid.clone(), name: visitor.name.clone(), value: visitor.value.clone() }), visitor.name.clone());

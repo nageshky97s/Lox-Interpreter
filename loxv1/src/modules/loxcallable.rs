@@ -1,9 +1,11 @@
-use super::{interpreter, loxclass::LoxClass, loxfunction::LoxFunction, token};
-use std::fmt;
+use super::{interpreter, loxclass::LoxClass, loxfunction::LoxFunction, loxinstance::LoxInstance,token};
+use std::{fmt,rc::Rc,cell::RefCell };
+
 
 pub enum Callable{
     Function(LoxFunction),
     Class(LoxClass),
+    Instance(Rc<RefCell<LoxInstance>>),
 }
 pub trait LoxCallable{
      fn call( &self,
@@ -21,6 +23,7 @@ impl fmt::Display for Callable {
         match self {
             Self::Function(x)=>write!(f,"Function {} - Callable",x.declaration.name.lexeme),
             Self::Class(x)=>write!(f,"Class {} - Callable",x.name),
+            Self::Instance(x)=>write!(f,"Instance {} - Callable",x.borrow().class.name),
         }
     }
 }
@@ -30,7 +33,7 @@ impl Clone for Callable {
         match self {
             Callable::Function(lox_function) => Callable::Function(lox_function.clone()),
             Callable::Class(class) => Callable::Class(class.clone()),
-            // Callable::Instance(ins) => Callable::Instance(ins.clone()),
+            Callable::Instance(ins) => Callable::Instance(ins.clone()),
         }
     }
 }

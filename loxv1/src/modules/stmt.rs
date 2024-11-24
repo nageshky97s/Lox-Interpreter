@@ -2,7 +2,7 @@ use crate::modules::expr;
 use super::token;
 
 
-#[derive(PartialEq,Clone)]
+#[derive(PartialEq,Clone,Debug)]
 pub enum Stmt{
      Expression(Expression),
      Print(Print),
@@ -14,42 +14,42 @@ pub enum Stmt{
      Return(Return),
      Class(Class),
 }
-#[derive(PartialEq,Clone)]
+#[derive(PartialEq,Clone,Debug)]
 pub struct Class{
     pub name:token::Token,
     pub methods:Vec<Stmt>,
 
 }
-#[derive(PartialEq,Clone)]
+#[derive(PartialEq,Clone,Debug)]
 pub struct Return{
     pub keyword:token::Token,
     pub value:Option<expr::Expr>,
 }
-#[derive(PartialEq,Clone)]
+#[derive(PartialEq,Clone,Debug)]
 pub struct Function{
     pub name :token::Token,
     pub params :Vec<token::Token>,
     pub body:Vec<Stmt>,
 }
-#[derive(PartialEq,Clone)]
+#[derive(PartialEq,Clone,Debug)]
 pub struct While{
     pub condition :expr::Expr,
     pub body:Box<Stmt>,
-}#[derive(PartialEq,Clone)]
+}#[derive(PartialEq,Clone,Debug)]
 pub struct If{
     pub condition :expr::Expr,
     pub then_branch :Box<Stmt>,
     pub else_branch :Box<Option<Stmt>>,
-}#[derive(PartialEq,Clone)]
+}#[derive(PartialEq,Clone,Debug)]
 pub struct Block{
     pub statements:Vec<Stmt>,
-}#[derive(PartialEq,Clone)]
+}#[derive(PartialEq,Clone,Debug)]
 pub  struct Expression{
     pub expression :expr::Expr
-}#[derive(PartialEq,Clone)]
+}#[derive(PartialEq,Clone,Debug)]
 pub struct Print{
     pub expression :expr::Expr
-}#[derive(PartialEq,Clone)]
+}#[derive(PartialEq,Clone,Debug)]
 pub struct Var{
     pub name : token::Token,
     pub initializer :expr::Expr

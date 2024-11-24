@@ -13,8 +13,31 @@ pub enum Expr {
     Assign(Assign),
     Logical(Logical),
     Call(Call),
+    Get(Get),
+    Set(Set),
+    This(This),
 }
 pub type ExprBox = Box<Expr>;
+
+#[derive(Debug,PartialEq,Clone)]
+pub struct This{
+    pub uuid:usize,
+    pub keyword:token::Token
+}
+
+#[derive(Debug,PartialEq,Clone)]
+pub struct Set{
+    pub uuid:usize,
+    pub object:ExprBox,
+    pub name:token::Token,
+    pub value:ExprBox,
+}
+#[derive(Debug,PartialEq,Clone)]
+pub struct Get{
+    pub uuid:usize,
+    pub object: ExprBox,
+    pub name:token::Token,
+}
 
 #[derive(Debug,PartialEq,Clone)]
 
@@ -83,6 +106,9 @@ pub trait AstVisitor<R> {
     fn visit_assign(&mut self, visitor: &Assign) -> R;
     fn visit_logical(&mut self, visitor: &Logical) -> R;
     fn visit_call(&mut self, visitor: &Call) -> R;
+    fn visit_get(&mut self, visitor: &Get) -> R;
+    fn visit_set(&mut self, visitor: &Set) -> R;
+    fn visit_this(&mut self, visitor: &This) -> R;
 
 }
 pub trait Accept<R> {
@@ -102,6 +128,10 @@ impl<R> Accept<R> for Expr {
             Expr::Assign(x)=>visitor.visit_assign(x),
             Expr::Logical(x)=>visitor.visit_logical(x),
             Expr::Call(x)=>visitor.visit_call(x),
+            Expr::Get(x)=>visitor.visit_get(x),
+            Expr::Set(x)=>visitor.visit_set(x),
+            Expr::This(x)=>visitor.visit_this(x),
+
 
         }
     }
@@ -118,9 +148,9 @@ impl Expr {
             Expr::Unary(e) => e.uuid,
             Expr::Variable(e) => e.uuid,
             Expr::Call(e) => e.uuid,
-            // Expr::Get(e) => e.uuid,
-            // Expr::Set(e) => e.uuid,
-            // Expr::This(e) => e.uuid,
+            Expr::Get(e) => e.uuid,
+            Expr::Set(e) => e.uuid,
+            Expr::This(e) => e.uuid,
             // Expr::Super(e) => e.uuid,
         }
     }
@@ -166,7 +196,21 @@ impl<R> Accept<R> for Variable {
         visitor.visit_variable(self)
     }
 }
-
+impl<R> Accept<R> for Get {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_get(self)
+    }
+}
+impl<R> Accept<R> for Set {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_set(self)
+    }
+}
+impl<R> Accept<R> for This {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_this(self)
+    }
+}
 impl PartialEq for Expr {
     fn eq(&self, other: &Self) -> bool {
         self.get_uid() == other.get_uid()

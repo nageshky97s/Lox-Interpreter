@@ -36,7 +36,10 @@ impl Parser {
             if let expr::Expr::Variable(name)= exp {
                 let name_=name.name.clone();
                 return Ok(expr::Expr::Assign(expr::Assign{name:name_,value:Box::new(value),uuid:uuid_next()}))
-            }else{
+            }else if let expr::Expr::Get(g) =exp{
+                return Ok(expr::Expr::Set(expr::Set{uuid:uuid_next(),object:g.object,name:g.name,value:Box::new(value),}))              
+            }
+            else{
                 self.error(equals, "Invalid assignment target.".to_string(), lox_obj);
                 return Err(ParseError);
             }
@@ -123,6 +126,10 @@ impl Parser {
             if self.match_(vec![token::TokenType::LeftParen]){
                 exp=self.finish_call(exp,lox_obj)?;
             }
+            else if self.match_(vec![token::TokenType::Dot]) {
+                let name=self.consume(token::TokenType::Identifier, "Expect property name after '.'.".to_string(), lox_obj)?;
+                exp=expr::Expr::Get(expr::Get{uuid:uuid_next(),object:Box::new(exp),name:name})
+            }
             else{
                 break;
             }
@@ -161,6 +168,9 @@ impl Parser {
         else if self.match_(vec![token::TokenType::Number,token::TokenType::String]){
             return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:self.previous().literal}));
                    
+        }
+        else if self.match_(vec![token::TokenType::This]) {
+            return Ok(expr::Expr::This(expr::This { uuid: uuid_next(), keyword: self.previous() }))
         }
         else if self.match_(vec![token::TokenType::Identifier]){
             return Ok(expr::Expr::Variable(expr::Variable { uuid:uuid_next(),name: self.previous() }))

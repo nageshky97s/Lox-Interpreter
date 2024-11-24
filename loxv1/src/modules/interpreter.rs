@@ -139,6 +139,7 @@ fn stringify(&mut self,value:token::Literals)->String{
         token::Literals::Callable(c) => match c {
            loxcallable::Callable::Function(func) => func.to_string(),
            loxcallable::Callable::Class(class)=>class.to_string(),
+           loxcallable::Callable::Instance(instance)=>instance.borrow_mut().to_string(),
             //_ => "callable".to_string(),
         },
     }
@@ -160,6 +161,7 @@ pub fn look_up_variable(&mut self,name:token::Token,exp:expr::Expr)->Result<toke
         return self.environment.borrow_mut().get_at(distance.unwrap().clone(),&name);
     }
     else{
+
         return self.globals.borrow_mut().get(&name);
     }
 }
@@ -240,7 +242,19 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
     }
     fn visit_class_stmt(&mut self, visitor: &stmt::Class) -> Result<(),Exit> {
         self.environment.borrow_mut().define(visitor.name.lexeme.clone(),token::Literals::Nil);
-        let klass=loxclass::LoxClass::new(visitor.name.lexeme.clone());
+        let mut methods = HashMap::new();
+        for method in visitor.methods.iter() {
+            if let stmt::Stmt::Function(m) = method {
+                let function = loxfunction::LoxFunction::new(
+                    m.clone(),
+                    Rc::clone(&self.environment),
+                    // m.name.lexeme.eq("init"),
+                );
+                methods.insert(m.name.lexeme.clone(), function);
+            }
+        }
+
+        let klass=loxclass::LoxClass::new(visitor.name.lexeme.clone(),methods);
         self.environment.borrow_mut().assign(&visitor.name, token::Literals::Callable(Callable::Class(klass)))?;
         Ok(())
     }
@@ -250,6 +264,33 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
 
 impl expr::AstVisitor<Result<token::Literals,Exit>> for Interpreter{
 
+    fn visit_this(&mut self, visitor: &expr::This) -> Result<token::Literals,Exit> {
+      return self.look_up_variable(visitor.keyword.clone(), expr::Expr::This(visitor.clone()));
+    }
+
+
+
+    fn visit_set(&mut self, visitor: &expr::Set) -> Result<token::Literals,Exit> {
+        let object= self.evaluate(&visitor.object)?;
+        if let token::Literals::Callable(Callable::Instance(instance))=object{
+            let value = self.evaluate(&visitor.value)?;
+            instance.borrow_mut().set(&visitor.name,&value);
+            Ok(value)
+        }else{
+            Err(Exit::RuntimeErr(RuntimeError { tok: visitor.name.clone(), mess: "Only instances have fields.".to_string() }))
+        }
+
+
+    }
+
+    fn visit_get(&mut self, visitor: &expr::Get) -> Result<token::Literals,Exit> {
+        let object=self.evaluate(&visitor.object)?;
+        if let token::Literals::Callable(Callable::Instance(instance))=object{
+            instance.borrow_mut().get(&visitor.name)
+        }else{
+            Err(Exit::RuntimeErr(RuntimeError { tok: visitor.name.clone(), mess: "Only instances have properties.".to_string() }))
+        }
+    }
     fn visit_call(&mut self, visitor: &expr::Call) -> Result<token::Literals,Exit> {
         let callee=self.evaluate(&visitor.callee)?;
         let mut arguments:Vec<token::Literals>=Vec::new();
