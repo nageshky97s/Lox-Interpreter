@@ -18,6 +18,7 @@ pub enum Stmt{
 pub struct Class{
     pub name:token::Token,
     pub methods:Vec<Stmt>,
+    pub super_class: Option<expr::Expr>,
 
 }
 #[derive(PartialEq,Clone,Debug)]

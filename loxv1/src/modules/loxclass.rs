@@ -7,16 +7,20 @@ use std::collections::HashMap;
 pub struct LoxClass{
     pub name:String,
     pub methods: HashMap<String,loxfunction::LoxFunction>,
+    pub super_class: Option<Box<LoxClass>>,
 
 }
 
 impl LoxClass {
-    pub fn new(name_:String,methods: HashMap<String, loxfunction::LoxFunction>,)->Self {
-        LoxClass { name: name_,methods:methods }
+    pub fn new(name_:String,methods: HashMap<String, loxfunction::LoxFunction>,super_class: Option<LoxClass>,)->Self {
+        LoxClass { name: name_,methods:methods,super_class:super_class.map(Box::new), }
     }
     pub fn find_method(&self,name:String) -> Option<&loxfunction::LoxFunction> {
         if self.methods.contains_key(&name){
             return self.methods.get(&name);
+        }
+        if let Some(sc) = &self.super_class {
+            return sc.find_method(name);
         }
         None
     }

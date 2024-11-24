@@ -166,8 +166,13 @@ impl Parser {
         else if self.match_(vec![token::TokenType::Nil]){
         return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:token::Literals::Nil})); }
         else if self.match_(vec![token::TokenType::Number,token::TokenType::String]){
-            return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:self.previous().literal}));
-                   
+            return Ok(expr::Expr::Literal(expr::Literal{uuid:uuid_next(),value:self.previous().literal}));                   
+        }
+        else if self.match_(vec![token::TokenType::Super]){
+            let keyword=self.previous();
+            self.consume(token::TokenType::Dot, "Expect '.' after 'super'.".to_string(), lox_obj)?;
+            let method=self.consume(token::TokenType::Identifier, "Expect superclass method name.".to_string(), lox_obj)?;
+            return Ok(expr::Expr::Super(expr::Super { uuid: uuid_next(), keyword: keyword.clone(), method: method.clone() }));
         }
         else if self.match_(vec![token::TokenType::This]) {
             return Ok(expr::Expr::This(expr::This { uuid: uuid_next(), keyword: self.previous() }))
@@ -314,6 +319,11 @@ impl Parser {
 
   fn class_decalration(&mut self,lox_obj:&mut lox::Lox)->Result<stmt::Stmt,ParseError>{
     let name = self.consume(token::TokenType::Identifier, "Expect class name.".to_string(), lox_obj)?;
+    let mut superclass=None;
+    if self.match_(vec![token::TokenType::Lesser]){
+        self.consume(token::TokenType::Identifier, "Expect superclass name.".to_string(), lox_obj)?;
+        superclass=Some(expr::Expr::Variable(expr::Variable {uuid: uuid_next(),name: self.previous(),}));
+    }
     self.consume(token::TokenType::LeftBrace, "Expect '{' before class body.".to_string(), lox_obj)?;
 
     let mut methods:Vec<stmt::Stmt>=Vec::new();
@@ -321,7 +331,7 @@ impl Parser {
         methods.push(self.function("method".to_string(), lox_obj)?);
     }
     self.consume(token::TokenType::RightBrace, "Expect '}' after class body.".to_string(), lox_obj)?;
-    Ok(stmt::Stmt::Class(stmt::Class { name: name, methods: methods }))
+    Ok(stmt::Stmt::Class(stmt::Class { name: name, methods: methods,super_class:superclass }))
 
   }
 

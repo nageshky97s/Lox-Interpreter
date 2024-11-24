@@ -241,7 +241,26 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
         Ok(())
     }
     fn visit_class_stmt(&mut self, visitor: &stmt::Class) -> Result<(),Exit> {
+
+        let mut superclass=token::Literals::Nil;
+        let mut s_c = None;
+        if let Some(sc) = &visitor.super_class {
+            superclass = self.evaluate(sc)?;
+            if let token::Literals::Callable(Callable::Class(c)) = &superclass {
+                s_c = Some(c.clone());
+            } else {
+                return Err(Exit::RuntimeErr(RuntimeError { tok: visitor.name.clone(), mess: "Superclass must be a class.".to_string() }))
+            }
+        }
         self.environment.borrow_mut().define(visitor.name.lexeme.clone(),token::Literals::Nil);
+        if let Some(expr::Expr::Variable(_)) = &visitor.super_class {
+            self.environment = Rc::new(RefCell::new(environment::Environment::new_env(Rc::clone(
+                &self.environment,
+            ))));
+            self.environment
+                .borrow_mut()
+                .define("super".to_string(), superclass);
+        }
         let mut methods = HashMap::new();
         for method in visitor.methods.iter() {
             if let stmt::Stmt::Function(m) = method {
@@ -254,7 +273,12 @@ impl stmt::StmtVisitor<Result<(),Exit>> for Interpreter{
             }
         }
 
-        let klass=loxclass::LoxClass::new(visitor.name.lexeme.clone(),methods);
+        let klass=loxclass::LoxClass::new(visitor.name.lexeme.clone(),methods,s_c);
+        if let Some(expr::Expr::Variable(_)) = &visitor.super_class {
+            let enclosing = Rc::clone(self.environment.borrow_mut().enclosing.as_ref().unwrap());
+            self.environment = enclosing;
+        }
+
         self.environment.borrow_mut().assign(&visitor.name, token::Literals::Callable(Callable::Class(klass)))?;
         Ok(())
     }
@@ -267,7 +291,42 @@ impl expr::AstVisitor<Result<token::Literals,Exit>> for Interpreter{
     fn visit_this(&mut self, visitor: &expr::This) -> Result<token::Literals,Exit> {
       return self.look_up_variable(visitor.keyword.clone(), expr::Expr::This(visitor.clone()));
     }
+    fn visit_super(&mut self, visitor: &expr::Super) -> Result<token::Literals,Exit> {
+        let distance =self.locals.get(&expr::Expr::Super(visitor.clone()));
+        if distance.is_none() {
+            return Err(Exit::RuntimeErr(RuntimeError { tok:visitor.method.clone() , mess: "Super for the class was not found".to_string() }))
+        }
+        let super_class = self.environment.borrow().get_at(*distance.unwrap(),&token::Token {
+                token_type: token::TokenType::Super,
+                lexeme: "super".to_string(),
+                literal: token::Literals::Nil,
+                line: visitor.method.line,
+            },
+        )?;
+        let object = self.environment.borrow().get_at(
+            distance.unwrap() - 1,
+            &token::Token {
+                token_type: token::TokenType::This,
+                lexeme: "this".to_string(),
+                literal: token::Literals::Nil,
+                line: visitor.method.line,
+            },
+        )?;
+        if let token::Literals::Callable(Callable::Class(c)) = &super_class {
+            let method = c.find_method(visitor.method.lexeme.clone());
+            if let token::Literals::Callable(Callable::Instance(ins)) = object {
+                match method {
+                    Some(m) => return Ok(token::Literals::Callable(Callable::Function(m.bind(ins)))),
+                    None => {
+                       return  Err(Exit::RuntimeErr(RuntimeError { tok: visitor.method.clone(), mess: "Undefined property '".to_string()+
+                    &visitor.method.lexeme+&"'.".to_string() }));
+                    }
+                }
+            }
+        }
+        return Err(Exit::RuntimeErr(RuntimeError { tok: visitor.method.clone(), mess: "Problems with Inheritance-Super'".to_string() }));
 
+    }
 
 
     fn visit_set(&mut self, visitor: &expr::Set) -> Result<token::Literals,Exit> {

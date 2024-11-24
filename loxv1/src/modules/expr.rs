@@ -16,9 +16,17 @@ pub enum Expr {
     Get(Get),
     Set(Set),
     This(This),
+    Super(Super),
 }
 pub type ExprBox = Box<Expr>;
 
+
+#[derive(Debug,PartialEq,Clone)]
+pub struct Super{
+    pub uuid:usize,
+    pub keyword:token::Token,
+    pub method:token::Token,
+}
 #[derive(Debug,PartialEq,Clone)]
 pub struct This{
     pub uuid:usize,
@@ -109,6 +117,7 @@ pub trait AstVisitor<R> {
     fn visit_get(&mut self, visitor: &Get) -> R;
     fn visit_set(&mut self, visitor: &Set) -> R;
     fn visit_this(&mut self, visitor: &This) -> R;
+    fn visit_super(&mut self, visitor: &Super) -> R;
 
 }
 pub trait Accept<R> {
@@ -131,6 +140,7 @@ impl<R> Accept<R> for Expr {
             Expr::Get(x)=>visitor.visit_get(x),
             Expr::Set(x)=>visitor.visit_set(x),
             Expr::This(x)=>visitor.visit_this(x),
+            Expr::Super(x)=>visitor.visit_super(x),
 
 
         }
@@ -151,7 +161,7 @@ impl Expr {
             Expr::Get(e) => e.uuid,
             Expr::Set(e) => e.uuid,
             Expr::This(e) => e.uuid,
-            // Expr::Super(e) => e.uuid,
+            Expr::Super(e) => e.uuid,
         }
     }
 }
@@ -209,6 +219,11 @@ impl<R> Accept<R> for Set {
 impl<R> Accept<R> for This {
     fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
         visitor.visit_this(self)
+    }
+}
+impl<R> Accept<R> for Super {
+    fn accept<V: AstVisitor<R>>(&self, visitor: &mut V) -> R {
+        visitor.visit_super(self)
     }
 }
 impl PartialEq for Expr {

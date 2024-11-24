@@ -161,10 +161,25 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
         self.current_class = ClassType::Class;
 
         self.declare(visitor.name.clone())?;
+        self.define(visitor.name.clone());
+
+        if let Some(expr::Expr::Variable(sc)) = &visitor.super_class {
+            if visitor.name.lexeme.eq(&sc.name.lexeme) {
+                self.lox_obj.errorp(sc.name.clone(), "A class can't inherit from itself.".to_string());
+                return Err(parser::ParseError {});
+            }
+            self.current_class = ClassType::SubClass;
+            self.resolve_expr(&expr::Expr::Variable(sc.clone()));
+            self.begin_scope();
+            self.scopes
+                .last_mut()
+                .unwrap()
+                .insert("super".to_string(), true);
+        }
+
         self.begin_scope();
         self.scopes.last_mut().unwrap().insert("this".to_string(), true);
-        for method in visitor.methods.iter() 
-        {
+        for method in visitor.methods.iter()         {
             
             if let Stmt::Function(m) = method {
                 let declaration =  if m.name.lexeme.eq("init") {
@@ -177,13 +192,28 @@ impl<'a> stmt::StmtVisitor<Result<(),parser::ParseError>> for Resolver<'a> {
         }
 
         
-        self.define(visitor.name.clone());
+        
         self.endscope();
+        if let Some(expr::Expr::Variable(_sc)) = &visitor.super_class {
+            self.endscope();
+        }
         self.current_class = enclosing_class;
         Ok(())
     }
 }
 impl<'a> expr::AstVisitor<Result<(),parser::ParseError>> for Resolver<'a>  {
+
+    fn visit_super(&mut self, visitor: &expr::Super) -> Result<(),parser::ParseError> {
+        if self.current_class==ClassType::None{
+            self.lox_obj.errorp(visitor.keyword.clone(), "Can't use 'super' outside of a class.".to_string());
+            return Err(parser::ParseError);
+        }else if self.current_class!=ClassType::SubClass{
+            self.lox_obj.errorp(visitor.keyword.clone(), "Can't use 'super' in a class with no superclass.".to_string());
+            return Err(parser::ParseError);            
+        }
+        self.resolve_local(expr::Expr::Super(visitor.clone()), visitor.keyword.clone());
+        Ok(())
+    }
 
     fn visit_this(&mut self, visitor: &expr::This) -> Result<(),parser::ParseError> {
 

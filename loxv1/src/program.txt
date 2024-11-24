@@ -1,5 +1,6 @@
-class Foo {
-init() {
-return;
+class Eclair {
+cook() {
+super.cook();
+print "Pipe full of crème pâtissière.";
 }
 }
