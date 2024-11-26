@@ -29,6 +29,7 @@ impl Lox {
     
         if !Path::new(path).exists(){
             println!("The Path {} is not valid",path);
+            return;
         }
         let mut text = String::new();
         if let Ok(mut lines) = read_lines(&path) {
